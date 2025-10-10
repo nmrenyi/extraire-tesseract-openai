@@ -5,6 +5,7 @@ import os
 import sys
 import argparse
 from pathlib import Path
+from tqdm import tqdm
 
 def batch_ocr(directory_name, language='fra', psm='3'):
     """
@@ -39,32 +40,40 @@ def batch_ocr(directory_name, language='fra', psm='3'):
         print(f"No PNG files found in {image_dir}")
         return False
     
-    # Process each PNG file
+    # Process each PNG file with progress bar
     success_count = 0
+    failed_files = []
     total_count = len(png_files)
     
-    for png_file in png_files:
-        filename = png_file.stem  # filename without extension
-        output_file = output_dir / f"{filename}.txt"
-        
-        print(f"Processing: {png_file.name}")
-        
-        # Run tesseract
-        result = subprocess.run([
-            'tesseract', str(png_file), str(output_file.with_suffix('')),
-            '-l', language,         # Language
-            '--psm', psm           # Page segmentation mode
-        ], capture_output=True, text=True)
-        
-        if result.returncode == 0:
-            print(f"✓ Success: {output_file}")
-            success_count += 1
-        else:
-            print(f"✗ Failed: {png_file.name}")
-            print(f"  Error: {result.stderr.strip()}")
+    with tqdm(png_files, desc=f"OCR {directory_name}", unit="file") as pbar:
+        for png_file in pbar:
+            filename = png_file.stem  # filename without extension
+            output_file = output_dir / f"{filename}.txt"
+            
+            # Update progress bar description
+            pbar.set_description(f"OCR {directory_name}: {png_file.name}")
+            
+            # Run tesseract
+            result = subprocess.run([
+                'tesseract', str(png_file), str(output_file.with_suffix('')),
+                '-l', language,         # Language
+                '--psm', psm           # Page segmentation mode
+            ], capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                success_count += 1
+                pbar.set_postfix({"Success": f"{success_count}/{total_count}"})
+            else:
+                failed_files.append((png_file.name, result.stderr.strip()))
+                pbar.set_postfix({"Success": f"{success_count}/{total_count}", "Status": "FAILED"})
     
-    print("")
-    print(f"Completed! Processed {success_count}/{total_count} files successfully.")
+    # Report results
+    if failed_files:
+        print(f"\n⚠️  {len(failed_files)} file(s) failed OCR processing:")
+        for filename, error in failed_files:
+            print(f"  {filename}: {error}")
+    
+    print(f"\n✓ Completed! Processed {success_count}/{total_count} files successfully.")
     print(f"OCR text files saved in: {output_dir}")
     
     return success_count == total_count
