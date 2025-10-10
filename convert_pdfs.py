@@ -66,6 +66,7 @@ def convert_pdf_to_png_with_progress(pdf_path, output_dir, dpi=300):
         
         # Convert pages one by one with progress bar
         successful_pages = 0
+        failed_pages = []
         with tqdm(range(1, page_count + 1), desc=f"Converting {year}", unit="page") as pbar:
             for page_num in pbar:
                 output_file = year_dir / f"{year}-page-{page_num:03d}.png"
@@ -87,8 +88,15 @@ def convert_pdf_to_png_with_progress(pdf_path, output_dir, dpi=300):
                     pbar.set_postfix({"Success": f"{successful_pages}/{page_count}"})
                     
                 except subprocess.CalledProcessError as e:
+                    failed_pages.append((page_num, e.stderr.strip()))
                     pbar.set_postfix({"Success": f"{successful_pages}/{page_count}", "Status": "FAILED"})
                     
+        # Report results
+        if failed_pages:
+            print(f"\n⚠️  {len(failed_pages)} page(s) failed to convert:")
+            for page_num, error in failed_pages:
+                print(f"  Page {page_num}: {error}")
+        
         print(f"✓ Successfully converted {successful_pages}/{page_count} pages from {pdf_path}")
         return successful_pages == page_count
         
