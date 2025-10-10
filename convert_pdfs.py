@@ -10,10 +10,39 @@ import glob
 import argparse
 import sys
 from pathlib import Path
+from tqdm import tqdm
 
-def convert_pdf_to_png(pdf_path, output_dir, dpi=300):
+def get_pdf_page_count(pdf_path):
     """
-    Convert a single PDF to PNG pages using pdftoppm
+    Get the number of pages in a PDF file using pdfinfo
+    
+    Args:
+        pdf_path (str): Path to the PDF file
+        
+    Returns:
+        int: Number of pages, or None if unable to determine
+    """
+    try:
+        result = subprocess.run(
+            ["pdfinfo", pdf_path],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        
+        # Parse output to find "Pages:" line
+        for line in result.stdout.split('\n'):
+            if line.startswith('Pages:'):
+                return int(line.split()[-1])
+        
+        return None
+        
+    except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
+        return None
+
+def convert_pdf_to_png_with_progress(pdf_path, output_dir, dpi=300):
+    """
+    Convert a single PDF to PNG pages with page-by-page progress tracking
     
     Args:
         pdf_path (str): Path to the PDF file
@@ -27,15 +56,57 @@ def convert_pdf_to_png(pdf_path, output_dir, dpi=300):
     year_dir = Path(output_dir) / year
     year_dir.mkdir(parents=True, exist_ok=True)
     
-    # Define output prefix for pdftoppm
+    print(f"\nConverting {pdf_path} to {year_dir}/...")
+    
+    # Get page count for progress tracking
+    page_count = get_pdf_page_count(pdf_path)
+    
+    if page_count:
+        print(f"PDF has {page_count} pages")
+        
+        # Convert pages one by one with progress bar
+        successful_pages = 0
+        with tqdm(range(1, page_count + 1), desc=f"Converting {year}", unit="page") as pbar:
+            for page_num in pbar:
+                output_file = year_dir / f"{year}-page-{page_num:03d}.png"
+                
+                # Convert single page
+                cmd = [
+                    "pdftoppm",
+                    "-png",
+                    "-r", str(dpi),
+                    "-f", str(page_num),  # first page
+                    "-l", str(page_num),  # last page
+                    pdf_path,
+                    str(year_dir / f"{year}-page")
+                ]
+                
+                try:
+                    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+                    successful_pages += 1
+                    pbar.set_postfix({"Success": f"{successful_pages}/{page_count}"})
+                    
+                except subprocess.CalledProcessError as e:
+                    pbar.set_postfix({"Success": f"{successful_pages}/{page_count}", "Status": "FAILED"})
+                    
+        print(f"✓ Successfully converted {successful_pages}/{page_count} pages from {pdf_path}")
+        return successful_pages == page_count
+        
+    else:
+        # Fallback to original method if can't get page count
+        print("Unable to determine page count, using batch conversion...")
+        return convert_pdf_to_png_fallback(pdf_path, output_dir, dpi)
+
+def convert_pdf_to_png_fallback(pdf_path, output_dir, dpi=300):
+    """
+    Fallback method: Convert entire PDF at once (original method)
+    """
+    year = Path(pdf_path).stem
+    year_dir = Path(output_dir) / year
+    year_dir.mkdir(parents=True, exist_ok=True)
     output_prefix = year_dir / f"{year}-page"
     
-    print(f"Converting {pdf_path} to {year_dir}/...")
-    
     try:
-        # Use pdftoppm to convert PDF to PNG
-        # -png: output format PNG
-        # -r: resolution DPI for good quality
         cmd = [
             "pdftoppm",
             "-png",
@@ -157,7 +228,7 @@ def main():
     # Convert each PDF
     successful = 0
     for pdf_path in pdf_files:
-        if convert_pdf_to_png(pdf_path, output_dir, args.dpi):
+        if convert_pdf_to_png_with_progress(pdf_path, output_dir, args.dpi):
             successful += 1
     
     print(f"\nConversion complete! {successful}/{len(pdf_files)} files processed successfully.")
