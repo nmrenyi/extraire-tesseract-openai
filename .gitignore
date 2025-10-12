@@ -3,6 +3,7 @@ rosenwald-tesseract-ocr/
 rosenwald-original-ocr/
 pdfs/
 pdfs
+llm-corrected-results/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
