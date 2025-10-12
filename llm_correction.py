@@ -27,7 +27,7 @@ from openai import OpenAI
 
 # Optional import for Gemini support
 try:
-    import google.generativeai as genai
+    from google import genai
     GEMINI_AVAILABLE = True
 except ImportError:
     genai = None
@@ -73,7 +73,7 @@ class LLMCorrector:
         self.model = model
         self.delay_between_pages = delay_between_pages
         self.openai_client = None
-        self.genai_model = None
+        self.genai_client = None
         
         # Load prompt template
         self.instructions = self._load_prompt_template()
@@ -116,10 +116,18 @@ class LLMCorrector:
                 logger.info(f"Initialized OpenAI client for model: {self.model}")
             elif self.model in self.GEMINI_MODELS:
                 if not GEMINI_AVAILABLE:
-                    raise ImportError("google-generativeai package not installed. Install with: pip install google-generativeai")
-                # Configure Gemini (requires GOOGLE_API_KEY environment variable)
-                genai.configure()
-                self.genai_model = genai.GenerativeModel(self.model)
+                    raise ImportError("google-genai package not installed. Install with: pip install google-genai")
+                # Initialize Gemini client - will automatically use GEMINI_API_KEY env var if available
+                import os
+                api_key = os.getenv('GEMINI_API_KEY')
+                if api_key:
+                    self.genai_client = genai.Client(api_key=api_key)
+                else:
+                    # Try without explicit API key - SDK may have default configuration
+                    try:
+                        self.genai_client = genai.Client()
+                    except Exception as e:
+                        raise ValueError(f"Failed to initialize Gemini client. Please set GEMINI_API_KEY environment variable or ensure default credentials are configured. Get your API key from https://aistudio.google.com/apikey. Error: {e}")
                 logger.info(f"Initialized Gemini client for model: {self.model}")
             else:
                 available_models = self.GPT_MODELS + self.GEMINI_MODELS
@@ -210,19 +218,20 @@ class LLMCorrector:
             raise
     
     def _call_gemini(self, ocr_text: str) -> str:
-        """Call Gemini API with combined instructions and input"""
+        """Call Gemini API using the new Google GenAI SDK"""
         if not GEMINI_AVAILABLE:
-            raise ImportError("Gemini support not available. Install google-generativeai package.")
+            raise ImportError("Gemini support not available. Install google-genai package.")
         
         try:
-            # For Gemini, combine instructions and input since it doesn't have separate parameters
+            # For Gemini, combine instructions and input in a single prompt
             full_prompt = f"{self.instructions}\n\n### TEXTE OCR À TRAITER:\n{ocr_text}"
             
-            response = self.genai_model.generate_content(
-                full_prompt,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=0,  # Deterministic output for structured data extraction
-                )
+            response = self.genai_client.models.generate_content(
+                model=self.model,
+                contents=full_prompt,
+                config={
+                    'temperature': 0.0,  # Deterministic output for structured data extraction
+                }
             )
             return response.text.strip()
         except Exception as e:
