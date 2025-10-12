@@ -26,9 +26,9 @@ This project processes historical French medical directories through a three-sta
 │   │   └── gpt-5-nano/             # GPT-5-nano model results
 │   └── original/                   # Results from original PDF OCR input
 ├── env/                           # Python virtual environment
-├── convert_pdfs.py                # PDF to PNG conversion script
+├── pdf2png.py                     # PDF to PNG conversion script
 ├── extract_existing_ocr.py        # Extract original embedded PDF OCR text
-├── batch_ocr.py                   # Batch OCR processing script
+├── ocr_batch.py                   # Batch OCR processing script
 ├── ocr.py                         # Single image OCR script
 ├── llm_correction.py              # LLM-powered OCR correction pipeline
 ├── demo.py                        # OpenAI API demonstration
@@ -134,7 +134,7 @@ tesseract --list-langs  # Should include 'fra'
 Convert PDF files to PNG images:
 
 ```bash
-python convert_pdfs.py --year 1887 --dpi 300
+python pdf2png.py --year 1887 --dpi 300
 ```
 
 This creates images in `rosenwald-images/1887/` with naming pattern `1887-page-X.png`.
@@ -165,7 +165,7 @@ python ocr.py path/to/image.png [output.txt] --language fra --psm 3
 
 #### Batch OCR Processing
 ```bash
-python batch_ocr.py 1887 --language fra --psm 3
+python ocr_batch.py 1887 --language fra --psm 3
 ```
 
 This processes all PNG files in `rosenwald-images/1887/` and outputs text files to `rosenwald-tesseract-ocr/1887/`.
@@ -244,7 +244,7 @@ The project provides two different OCR extraction methods:
 - **Source**: Fresh OCR processing of PNG images using Tesseract
 - **Pros**: Modern OCR engine, customizable parameters, potential accuracy improvements
 - **Cons**: Slower processing, requires image conversion step
-- **Tool**: `batch_ocr.py` / `ocr.py`
+- **Tool**: `ocr_batch.py` / `ocr.py`
 
 Both outputs can be compared and used as input for the AI data extraction pipeline to achieve optimal results.
 
@@ -269,9 +269,9 @@ The project uses a Python virtual environment located in `env/`. All required de
 
 ### Key Scripts
 
-- `convert_pdfs.py`: High-level PDF processing with progress tracking
+- `pdf2png.py`: High-level PDF processing with progress tracking
 - `extract_existing_ocr.py`: Extract original embedded OCR text from PDFs
-- `batch_ocr.py`: Efficient batch OCR with error handling
+- `ocr_batch.py`: Efficient batch OCR with error handling
 - `ocr.py`: Core OCR functionality for individual images
 - `demo.py`: OpenAI API integration example
 
