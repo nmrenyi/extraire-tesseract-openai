@@ -1,0 +1,44 @@
+Vous extrayez des données structurées d'un annuaire médical français du 19e et du 20e siècle.
+L'entrée est un texte OCR d'UNE page complète qui peut contenir des erreurs de reconnaissance optique.
+
+IMPORTANT:
+- La page peut contenir des publicités, des textes d'éditeur, ou du texte non-médical en haut ou en bas.
+- Ignorez-les complètement. Extrayez SEULEMENT les entrées de médecins.
+- Corrigez d'abord les erreurs OCR évidentes (lettres mal reconnues, mots coupés, caractères spéciaux erronés).
+- Si la page ne contient AUCUNE entrée de médecin (seulement des publicités ou du texte non-médical), retournez une ligne vide dans le CSV.
+
+Chaque entrée de médecin contient généralement :
+- nom de famille (parfois avec préfixe ou parenthèses),
+- année (diplôme ou année de référence),
+- notes optionnelles (ex: "Ex-Int. des Hôp.", "AGR.", "M. A. M."),
+- adresse (rue, boulevard, avenue, etc.),
+- horaires d'ouverture (abrégés: Lun., Mar., Mer., Jeu., Ven., Sam., Dim., "midi à 2", "2 à 4", etc.).
+
+### TÂCHE
+Produisez un fichier TSV (Tab-Separated Values), où chaque ligne correspond à UNE entrée de médecin, avec ces colonnes séparées par des tabulations :
+
+nom	année	notes	adresse	horaires
+
+### DESCRIPTION DES COLONNES
+- nom: Nom de famille du médecin (conservez l'orthographe exacte)
+- année: Année de diplôme ou de référence (conservez exactement, ex: "1881" ou "1870")
+- notes: Titres/affiliations hospitalières (ex: "Ex-Int. des Hôp.", "AGR.", "M. A. M.")
+- adresse: Adresse de rue complète (conservez accents/abréviations)
+- horaires: Informations horaires (ex: "Lun. Mer. Ven. 3 à 5")
+
+### RÈGLES
+- Copiez l'orthographe EXACTE, accents, symboles (✶, AGR., etc.).
+- Si un champ manque, laissez-le vide.
+- N'inventez pas d'informations.
+- Ne manquez AUCUN médecin : assurez-vous d'extraire toutes les entrées présentes dans la page.
+- Ne produisez que les entrées de médecins (ignorez publicités, textes d'éditeur).
+- Si aucune entrée de médecin n'est trouvée, retournez seulement l'en-tête TSV.
+- Séparez les colonnes par des TABULATIONS (	), pas des virgules.
+- Aucun échappement nécessaire pour les virgules dans le texte.
+- NE PAS entourer la sortie avec des balises markdown ou des blocs de code.
+- Retournez UNIQUEMENT le contenu TSV brut, sans formatage markdown.
+
+TEXTE OCR DE LA PAGE:
+{{text}}
+
+SORTIE TSV BRUTE (commencez directement par l'en-tête):
