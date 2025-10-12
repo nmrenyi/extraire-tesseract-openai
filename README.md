@@ -7,7 +7,7 @@ A comprehensive OCR and data extraction pipeline for processing historical Frenc
 This project processes historical French medical directories through a three-stage pipeline:
 
 1. **PDF to Image Conversion**: Convert PDF pages to high-quality PNG images
-2. **OCR Text Extraction**: Use Tesseract to extract raw text from images
+2. **OCR Text Extraction**: Use Tesseract to extract raw text from images (note: original PDFs already contain OCR text, but Tesseract provides additional extraction for comparison and improved accuracy)
 3. **AI-Powered Data Structuring**: Use OpenAI GPT models to correct OCR errors and extract structured medical directory data
 
 ## Project Structure
@@ -15,7 +15,7 @@ This project processes historical French medical directories through a three-sta
 ```
 ├── pdfs/                    # Source PDF files (1887-1949)
 ├── rosenwald-images/        # Converted PNG images by year
-├── rosenwald-ocr/          # OCR text output by year
+├── rosenwald-tesseract-ocr/ # Tesseract OCR text output by year
 ├── env/                    # Python virtual environment
 ├── convert_pdfs.py         # PDF to PNG conversion script
 ├── batch_ocr.py           # Batch OCR processing script
@@ -76,7 +76,7 @@ python ocr.py path/to/image.png [output.txt] --language fra --psm 3
 python batch_ocr.py 1887 --language fra --psm 3
 ```
 
-This processes all PNG files in `rosenwald-images/1887/` and outputs text files to `rosenwald-ocr/1887/`.
+This processes all PNG files in `rosenwald-images/1887/` and outputs text files to `rosenwald-tesseract-ocr/1887/`.
 
 ### 3. AI Data Extraction
 

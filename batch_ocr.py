@@ -18,7 +18,7 @@ def batch_ocr(directory_name, language='fra', psm='3'):
     """
     # Set up paths
     image_dir = Path(f"rosenwald-images/{directory_name}")
-    output_dir = Path(f"rosenwald-ocr/{directory_name}")
+    output_dir = Path(f"rosenwald-tesseract-ocr/{directory_name}")
     
     # Check if input directory exists
     if not image_dir.exists():

@@ -92,7 +92,7 @@ def main():
     # Build file paths
     page_num = f"{args.page:03d}"  # Format as 001, 002, etc.
     image_path = f"rosenwald-images/{args.year}/{args.year}-page-{page_num}.png"
-    output_path = f"rosenwald-ocr/{args.year}/{args.year}-page-{page_num}.txt"
+    output_path = f"rosenwald-tesseract-ocr/{args.year}/{args.year}-page-{page_num}.txt"
     
     print(f"Processing: {args.year}-page-{page_num}.png")
     
