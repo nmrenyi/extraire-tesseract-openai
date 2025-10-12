@@ -5,6 +5,8 @@ pdfs/
 pdfs
 llm-corrected-results/
 compare-results/
+ocr-no-ad/
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
