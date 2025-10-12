@@ -82,7 +82,7 @@ class LLMCorrector:
         self._initialize_client()
     
     def _load_prompt_template(self) -> str:
-        """Load the instruction template from instructions-raw.txt and example-output.tsv"""
+        """Load the instruction template from instructions-raw.txt and instructions-example-output.tsv"""
         try:
             # Load main instructions
             instructions_file = Path("instructions-raw.txt")
@@ -93,9 +93,9 @@ class LLMCorrector:
                 instructions = f.read().strip()
             
             # Load example output
-            example_file = Path("example-output.tsv")
+            example_file = Path("instructions-example-output.tsv")
             if not example_file.exists():
-                raise FileNotFoundError("example-output.tsv not found in current directory")
+                raise FileNotFoundError("instructions-example-output.tsv not found in current directory")
             
             with open(example_file, 'r', encoding='utf-8') as f:
                 example_output = f.read().strip()
