@@ -33,7 +33,7 @@ This project processes historical French medical directories through a three-sta
 ├── llm-correction.py              # LLM-powered OCR correction pipeline
 ├── demo.py                        # OpenAI API demonstration
 ├── instructions-raw.txt           # LLM correction instructions
-├── example-output.tsv             # Example structured output format
+├── instructions-example-output.tsv             # Example structured output format
 ├── prompt.txt                     # Legacy AI prompt (deprecated)
 └── prompt-example.tsv             # Legacy example format (deprecated)
 ```
@@ -214,7 +214,7 @@ The project also includes a legacy prompt system for reference:
 - **Processing**: AI corrects OCR errors and identifies medical entries
 - **Output**: Structured TSV data with columns: `nom`, `année`, `notes`, `adresse`, `horaires`
 
-See `instructions-raw.txt` and `example-output.tsv` for the current prompt system.
+See `instructions-raw.txt` and `instructions-example-output.tsv` for the current prompt system.
 
 ## Data Structure
 
