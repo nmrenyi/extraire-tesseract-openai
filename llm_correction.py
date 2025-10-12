@@ -395,8 +395,16 @@ class LLMCorrector:
         total_time = sum(r.processing_time for r in results if r.processing_time)
         avg_time = total_time / len(results) if results else 0
         
+        # Determine success status
+        complete_success = successful_count == len(files_to_process)
+        partial_success = successful_count > 0 and successful_count < len(files_to_process)
+        complete_failure = successful_count == 0
+        
         summary = {
-            "success": True,
+            "success": successful_count > 0,  # Any success counts as success
+            "complete_success": complete_success,
+            "partial_success": partial_success,
+            "complete_failure": complete_failure,
             "model_used": self.model,
             "ocr_source": ocr_source,
             "total_files": len(files_to_process),
@@ -547,14 +555,25 @@ def main():
         )
         
         if results["success"]:
-            print(f"\n✓ Processing completed successfully!")
+            if results["complete_success"]:
+                print(f"\n✓ Processing completed successfully!")
+            elif results["partial_success"]:
+                print(f"\n⚠ Processing partially completed!")
+            
             print(f"  Model: {results['model_used']}")
             print(f"  Success rate: {results['success_rate']:.1f}%")
             print(f"  Files processed: {results['successful']}/{results['total_files']}")
             print(f"  Average time per page: {results['average_time_per_page']:.2f}s")
             print(f"  Output directory: {results['output_directory']}")
+            
+            if results["partial_success"]:
+                print(f"  ⚠ Warning: {results['failed']} file(s) failed to process")
         else:
-            print(f"\n✗ Processing failed: {results['error']}")
+            print(f"\n✗ Processing failed completely!")
+            print(f"  Model: {results['model_used']}")
+            print(f"  Success rate: {results['success_rate']:.1f}%")
+            print(f"  Files processed: {results['successful']}/{results['total_files']}")
+            print(f"  All {results['failed']} file(s) failed to process")
             sys.exit(1)
             
     except KeyboardInterrupt:
