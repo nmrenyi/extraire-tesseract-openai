@@ -7,11 +7,7 @@ tqdm>=4.65.0
 # Optional dependencies for Gemini support
 google-generativeai>=0.3.0
 
-# Data processing
-pathlib
-json
-dataclasses
-logging
-argparse
-time
-typing
+# OCR and PDF processing
+PyMuPDF>=1.22.0
+Pillow>=9.0.0
+pytesseract>=0.3.10
