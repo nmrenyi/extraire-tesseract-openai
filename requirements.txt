@@ -1,0 +1,17 @@
+# AI OCR Correction Pipeline Dependencies
+
+# Core dependencies
+openai>=1.3.0
+tqdm>=4.65.0
+
+# Optional dependencies for Gemini support
+google-generativeai>=0.3.0
+
+# Data processing
+pathlib
+json
+dataclasses
+logging
+argparse
+time
+typing

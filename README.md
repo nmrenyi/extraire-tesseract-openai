@@ -15,28 +15,39 @@ This project processes historical French medical directories through a three-sta
 ## Project Structure
 
 ```
-├── pdfs/                    # Source PDF files (1887-1949)
-├── rosenwald-images/        # Converted PNG images by year
-├── rosenwald-tesseract-ocr/ # Tesseract OCR text output by year
-├── rosenwald-original-ocr/  # Original embedded PDF OCR text by year
-├── env/                    # Python virtual environment
-├── convert_pdfs.py         # PDF to PNG conversion script
-├── extract_existing_ocr.py # Extract original embedded PDF OCR text
-├── batch_ocr.py           # Batch OCR processing script
-├── ocr.py                 # Single image OCR script
-├── demo.py                # OpenAI API demonstration
-├── prompt.txt             # AI prompt for data extraction
-└── prompt-example.tsv     # Example output format
+├── pdfs/                           # Source PDF files (1887-1949)
+├── rosenwald-images/               # Converted PNG images by year
+├── rosenwald-tesseract-ocr/        # Tesseract OCR text output by year
+├── rosenwald-original-ocr/         # Original embedded PDF OCR text by year
+├── llm-corrected-results/          # LLM-corrected structured data
+│   ├── tesseract/                  # Results from Tesseract OCR input
+│   │   ├── gpt-5/                  # GPT-5 model results
+│   │   ├── gpt-5-mini/             # GPT-5-mini model results
+│   │   └── gpt-5-nano/             # GPT-5-nano model results
+│   └── original/                   # Results from original PDF OCR input
+├── env/                           # Python virtual environment
+├── convert_pdfs.py                # PDF to PNG conversion script
+├── extract_existing_ocr.py        # Extract original embedded PDF OCR text
+├── batch_ocr.py                   # Batch OCR processing script
+├── ocr.py                         # Single image OCR script
+├── llm_correction.py              # LLM-powered OCR correction pipeline
+├── demo.py                        # OpenAI API demonstration
+├── instructions-raw.txt           # LLM correction instructions
+├── example-output.tsv             # Example structured output format
+├── prompt.txt                     # Legacy AI prompt (deprecated)
+└── prompt-example.tsv             # Legacy example format (deprecated)
 ```
 
 ## Features
 
 - **Batch PDF Processing**: Convert entire yearly directories from PDF to PNG format
-- **OCR Processing**: Extract text from images using Tesseract with French language support
+- **Dual OCR Processing**: Extract text using both Tesseract and original embedded PDF OCR
+- **LLM-Powered Correction**: Advanced language models (GPT-5 series, Gemini 2.5) for error correction
 - **Progress Tracking**: Visual progress bars for long-running operations
-- **Structured Output**: Extract medical directory entries into TSV format
-- **Error Correction**: AI-powered correction of OCR errors and data formatting
-- **Flexible Configuration**: Customizable OCR parameters (language, page segmentation mode, DPI)
+- **Structured Output**: Extract medical directory entries into TSV format with organized folder structure
+- **Professional Pipeline**: Clean separation of instructions and input following OpenAI best practices
+- **Flexible Configuration**: Customizable OCR parameters and LLM model selection
+- **Comprehensive Error Handling**: Automatic retries, exponential backoff, and detailed logging
 
 ## Requirements
 
@@ -45,6 +56,65 @@ This project processes historical French medical directories through a three-sta
 - PyMuPDF (fitz) for PDF text extraction
 - OpenAI API access
 - Dependencies listed in the virtual environment
+
+## LLM-Powered OCR Correction
+
+The `llm_correction.py` script provides advanced OCR error correction using state-of-the-art language models. It processes raw OCR text and extracts structured medical directory data.
+
+### Supported Models
+
+#### OpenAI GPT-5 Series (Primary)
+- **gpt-5**: Latest flagship model with highest accuracy
+- **gpt-5-mini**: Balanced performance and cost
+- **gpt-5-nano**: Fastest processing for high-volume tasks
+
+#### Google Gemini 2.5 Series (Optional)
+- **gemini-2.5-pro**: High-capability model for complex corrections
+- **gemini-2.5-flash**: Fast processing alternative
+
+### Usage Examples
+
+#### Process specific pages for a year:
+```bash
+python llm_correction.py --year 1887 --pages 32
+```
+
+#### Process multiple pages with specific model:
+```bash
+python llm_correction.py --year 1887 --pages 32,33,34 --model gpt-5-mini
+```
+
+#### Process a page range using Tesseract OCR source:
+```bash
+python llm_correction.py --year 1887 --pages 30-35 --ocr-source tesseract
+```
+
+#### Use original PDF OCR with Gemini model:
+```bash
+python llm_correction.py --year 1887 --pages 32 --model gemini-2.5-pro --ocr-source original
+```
+
+### Command Line Options
+
+- `--year`: Target year directory (required)
+- `--pages`: Pages to process - single (32), multiple (32,33,34), or range (30-35)
+- `--model`: LLM model selection (default: gpt-5-nano)
+- `--ocr-source`: OCR source - 'tesseract' or 'original' (default: tesseract)
+- `--delay`: Delay between pages in seconds (default: 2)
+
+### Output Format
+
+Results are saved as TSV files with the following structure:
+```
+nom|année|notes|adresse|horaires
+```
+
+### Error Handling
+
+- **Exponential Backoff**: Automatic retry with increasing delays
+- **Comprehensive Logging**: All operations logged to `llm_correction.log`
+- **Progress Tracking**: Visual progress bars for multi-page processing
+- **Graceful Failures**: Individual page failures don't stop batch processing
 
 ### System Dependencies
 
@@ -100,15 +170,53 @@ python batch_ocr.py 1887 --language fra --psm 3
 
 This processes all PNG files in `rosenwald-images/1887/` and outputs text files to `rosenwald-tesseract-ocr/1887/`.
 
-### 4. AI Data Extraction
+### 4. LLM-Powered OCR Correction
 
-The project includes a sophisticated prompt system for extracting structured medical directory data:
+Process OCR text through advanced language models to correct errors and extract structured medical directory data:
+
+```bash
+# Process single page with GPT-5-nano (fastest)
+python llm_correction.py --year 1887 --pages 32 --model gpt-5-nano
+
+# Process multiple pages with GPT-5-mini (balanced)
+python llm_correction.py --year 1887 --pages 1-10,50,100-105 --model gpt-5-mini
+
+# Use original OCR instead of Tesseract
+python llm_correction.py --year 1887 --pages 32 --ocr-source original
+
+# Process with delay to avoid rate limits
+python llm_correction.py --year 1887 --pages 1-50 --delay 2.0
+```
+
+**Available Models:**
+- **GPT-5 series**: `gpt-5`, `gpt-5-mini`, `gpt-5-nano`
+- **Gemini 2.5 series**: `gemini-2.5-pro`, `gemini-2.5-flash` (optional)
+
+**Features:**
+- **Clean API separation**: Uses `instructions` + `input` parameters following OpenAI docs
+- **Organized output**: Results saved to `llm-corrected-results/{ocr_source}/{model}/{year}/`
+- **Error handling**: Automatic retries with exponential backoff
+- **Progress tracking**: Real-time progress bars and comprehensive logging
+- **Dual OCR support**: Works with both Tesseract and original PDF OCR
+
+**Setup:**
+```bash
+# Set OpenAI API key
+export OPENAI_API_KEY="your-openai-api-key"
+
+# Optional: For Gemini models
+export GOOGLE_API_KEY="your-google-api-key"
+```
+
+### 5. Legacy AI Data Extraction
+
+The project also includes a legacy prompt system for reference:
 
 - **Input**: Raw OCR text with potential errors
 - **Processing**: AI corrects OCR errors and identifies medical entries
 - **Output**: Structured TSV data with columns: `nom`, `année`, `notes`, `adresse`, `horaires`
 
-See `prompt.txt` for the complete AI prompt and `prompt-example.tsv` for expected output format.
+See `instructions-raw.txt` and `example-output.tsv` for the current prompt system.
 
 ## Data Structure
 
