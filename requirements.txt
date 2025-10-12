@@ -1,13 +1,76 @@
-# AI OCR Correction Pipeline Dependencies
+# Rosenwald Medical Directory OCR Project Dependencies
+# Python 3.8+ required for this project
 
-# Core dependencies
+# ============================================================================
+# CORE AI/LLM DEPENDENCIES  
+# ============================================================================
+
+# OpenAI API client for GPT models (GPT-5, GPT-5-mini, GPT-5-nano)
 openai>=1.3.0
-tqdm>=4.65.0
 
-# Optional dependencies for Gemini support
+# Google Generative AI client for Gemini models (2.5 Pro, 2.5 Flash)
+# Optional - only needed if using Gemini models
 google-genai>=0.3.0
 
-# OCR and PDF processing
+# ============================================================================
+# PDF AND OCR PROCESSING
+# ============================================================================
+
+# PyMuPDF - PDF processing and text extraction
 PyMuPDF>=1.22.0
-Pillow>=9.0.0
+
+# PDF to image conversion (used by pdf2png.py)
+# Note: Also requires system pdftoppm (poppler-utils package)
+pdf2image>=3.1.0
+
+# Python wrapper for Tesseract OCR engine
+# Note: Requires tesseract-ocr system package
 pytesseract>=0.3.10
+
+# Python Imaging Library for image processing
+Pillow>=9.0.0
+
+# ============================================================================
+# EVALUATION AND METRICS
+# ============================================================================
+
+# Word Error Rate and Character Error Rate calculation
+jiwer>=3.0.0
+
+# ============================================================================
+# USER INTERFACE AND UTILITIES
+# ============================================================================
+
+# Progress bars for long-running operations
+tqdm>=4.65.0
+
+# ============================================================================
+# STANDARD LIBRARY DEPENDENCIES (included in Python)
+# ============================================================================
+# The following are part of Python standard library and don't need installation:
+# - argparse (command-line argument parsing)
+# - pathlib (modern path handling)
+# - subprocess (system command execution) 
+# - json (JSON handling)
+# - logging (logging functionality)
+# - time (time utilities)
+# - sys, os, re, glob (system utilities)
+# - typing (type hints)
+# - dataclasses (data structures)
+
+# ============================================================================
+# SYSTEM REQUIREMENTS (install separately)
+# ============================================================================
+# These must be installed at the system level:
+#
+# macOS:
+#   brew install poppler tesseract
+#
+# Ubuntu/Debian:
+#   sudo apt-get install poppler-utils tesseract-ocr
+#
+# Windows:
+#   - Install Poppler: https://poppler.freedesktop.org/
+#   - Install Tesseract: https://github.com/UB-Mannheim/tesseract/wiki
+#
+# ============================================================================
