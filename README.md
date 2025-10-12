@@ -27,10 +27,10 @@ This project processes historical French medical directories through a three-sta
 │   └── original/                   # Results from original PDF OCR input
 ├── env/                           # Python virtual environment
 ├── pdf2png.py                     # PDF to PNG conversion script
-├── extract_existing_ocr.py        # Extract original embedded PDF OCR text
-├── ocr_batch.py                   # Batch OCR processing script
+├── extract-existing-ocr.py        # Extract original embedded PDF OCR text
+├── ocr-batch.py                   # Batch OCR processing script
 ├── ocr.py                         # Single image OCR script
-├── llm_correction.py              # LLM-powered OCR correction pipeline
+├── llm-correction.py              # LLM-powered OCR correction pipeline
 ├── demo.py                        # OpenAI API demonstration
 ├── instructions-raw.txt           # LLM correction instructions
 ├── example-output.tsv             # Example structured output format
@@ -59,7 +59,7 @@ This project processes historical French medical directories through a three-sta
 
 ## LLM-Powered OCR Correction
 
-The `llm_correction.py` script provides advanced OCR error correction using state-of-the-art language models. It processes raw OCR text and extracts structured medical directory data.
+The `llm-correction.py` script provides advanced OCR error correction using state-of-the-art language models. It processes raw OCR text and extracts structured medical directory data.
 
 ### Supported Models
 
@@ -76,22 +76,22 @@ The `llm_correction.py` script provides advanced OCR error correction using stat
 
 #### Process specific pages for a year:
 ```bash
-python llm_correction.py --year 1887 --pages 32
+python llm-correction.py --year 1887 --pages 32
 ```
 
 #### Process multiple pages with specific model:
 ```bash
-python llm_correction.py --year 1887 --pages 32,33,34 --model gpt-5-mini
+python llm-correction.py --year 1887 --pages 32,33,34 --model gpt-5-mini
 ```
 
 #### Process a page range using Tesseract OCR source:
 ```bash
-python llm_correction.py --year 1887 --pages 30-35 --ocr-source tesseract
+python llm-correction.py --year 1887 --pages 30-35 --ocr-source tesseract
 ```
 
 #### Use original PDF OCR with Gemini model:
 ```bash
-python llm_correction.py --year 1887 --pages 32 --model gemini-2.5-pro --ocr-source original
+python llm-correction.py --year 1887 --pages 32 --model gemini-2.5-pro --ocr-source original
 ```
 
 ### Command Line Options
@@ -144,14 +144,12 @@ This creates images in `rosenwald-images/1887/` with naming pattern `1887-page-X
 Extract embedded OCR text directly from PDF files:
 
 ```bash
-# Extract original OCR from a specific year
-python extract_existing_ocr.py --year 1887
-
-# Extract from specific PDF file
-python extract_existing_ocr.py --pdf path/to/file.pdf --output output_directory/
-
-# Show PDF information
-python extract_existing_ocr.py --info path/to/file.pdf
+# Extract OCR text from all PDFs in a year directory
+python extract-existing-ocr.py --year 1887
+# Process a single PDF file  
+python extract-existing-ocr.py --pdf path/to/file.pdf --output output_directory/
+# Get PDF information only
+python extract-existing-ocr.py --info path/to/file.pdf
 ```
 
 This extracts the original embedded OCR text to `rosenwald-original-ocr/1887/` with files named `1887-page-001.txt`, etc.
@@ -165,7 +163,7 @@ python ocr.py path/to/image.png [output.txt] --language fra --psm 3
 
 #### Batch OCR Processing
 ```bash
-python ocr_batch.py 1887 --language fra --psm 3
+python ocr-batch.py 1887 --language fra --psm 3
 ```
 
 This processes all PNG files in `rosenwald-images/1887/` and outputs text files to `rosenwald-tesseract-ocr/1887/`.
@@ -176,16 +174,16 @@ Process OCR text through advanced language models to correct errors and extract 
 
 ```bash
 # Process single page with GPT-5-nano (fastest)
-python llm_correction.py --year 1887 --pages 32 --model gpt-5-nano
+python llm-correction.py --year 1887 --pages 32 --model gpt-5-nano
 
 # Process multiple pages with GPT-5-mini (balanced)
-python llm_correction.py --year 1887 --pages 1-10,50,100-105 --model gpt-5-mini
+python llm-correction.py --year 1887 --pages 1-10,50,100-105 --model gpt-5-mini
 
 # Use original OCR instead of Tesseract
-python llm_correction.py --year 1887 --pages 32 --ocr-source original
+python llm-correction.py --year 1887 --pages 32 --ocr-source original
 
 # Process with delay to avoid rate limits
-python llm_correction.py --year 1887 --pages 1-50 --delay 2.0
+python llm-correction.py --year 1887 --pages 1-50 --delay 2.0
 ```
 
 **Available Models:**
@@ -238,13 +236,13 @@ The project provides two different OCR extraction methods:
 - **Source**: Embedded OCR text already present in PDF files
 - **Pros**: Fast extraction, preserves original digitization quality
 - **Cons**: May contain embedded errors from original scanning process
-- **Tool**: `extract_existing_ocr.py`
+- **Tool**: `extract-existing-ocr.py`
 
 ### Tesseract OCR (`rosenwald-tesseract-ocr/`)
 - **Source**: Fresh OCR processing of PNG images using Tesseract
 - **Pros**: Modern OCR engine, customizable parameters, potential accuracy improvements
 - **Cons**: Slower processing, requires image conversion step
-- **Tool**: `ocr_batch.py` / `ocr.py`
+- **Tool**: `ocr-batch.py` / `ocr.py`
 
 Both outputs can be compared and used as input for the AI data extraction pipeline to achieve optimal results.
 
@@ -270,8 +268,8 @@ The project uses a Python virtual environment located in `env/`. All required de
 ### Key Scripts
 
 - `pdf2png.py`: High-level PDF processing with progress tracking
-- `extract_existing_ocr.py`: Extract original embedded OCR text from PDFs
-- `ocr_batch.py`: Efficient batch OCR with error handling
+- `extract-existing-ocr.py`: Extract original embedded OCR text from PDFs
+- `ocr-batch.py`: Efficient batch OCR with error handling
 - `ocr.py`: Core OCR functionality for individual images
 - `demo.py`: OpenAI API integration example
 
