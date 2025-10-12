@@ -31,6 +31,7 @@ nom	année	notes	adresse	horaires
 - Si un champ manque, laissez-le vide.
 - N'inventez pas d'informations.
 - Ne manquez AUCUN médecin : assurez-vous d'extraire toutes les entrées présentes dans la page.
+- Respectez l’ordre original des entrées de médecins tel qu’il apparaît dans la page — ne changez pas cet ordre
 - Ne produisez que les entrées de médecins (ignorez publicités, textes d'éditeur).
 - Incluez toujours les titres de civilité (Mme, Mlle, etc.) dans le champ nom, et corrigez les erreurs OCR fréquentes comme "Mimc" pour Mme ou "Mile", "Milc" pour Mlle.
 - Si aucune entrée de médecin n'est trouvée, retournez seulement l'en-tête TSV.
