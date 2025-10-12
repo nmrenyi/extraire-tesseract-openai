@@ -4,6 +4,7 @@ rosenwald-original-ocr/
 pdfs/
 pdfs
 llm-corrected-results/
+compare-results/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
