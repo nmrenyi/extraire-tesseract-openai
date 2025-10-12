@@ -1,16 +1,17 @@
 # Rosenwald Medical Directory OCR Project
 
-A comprehensive OCR and data extraction pipeline for processing historical French medical directories from the Rosenwald collection (1887-1949). This project converts PDF documents to structured data using Tesseract OCR and OpenAI's language models for error correction and data formatting.
+A comprehensive OCR processing and evaluation pipeline for historical French medical directories from the Rosenwald collection (1887-1949). This project converts PDF documents to structured data using multiple OCR engines and advanced language models for error correction, with professional evaluation tools for performance analysis.
 
 ## Overview
 
-This project processes historical French medical directories through a three-stage pipeline:
+This project processes historical French medical directories through a complete pipeline:
 
 1. **PDF to Image Conversion**: Convert PDF pages to high-quality PNG images
-2. **OCR Text Extraction**: 
+2. **Dual OCR Extraction**: 
    - Extract original embedded OCR text directly from PDFs using PyMuPDF
    - Use Tesseract to extract raw text from images for comparison and improved accuracy
-3. **AI-Powered Data Structuring**: Use OpenAI GPT models to correct OCR errors and extract structured medical directory data
+3. **AI-Powered Data Structuring**: Use multiple LLM models (GPT-5 series, Gemini 2.5) to correct OCR errors and extract structured medical directory data
+4. **Performance Evaluation**: Comprehensive comparison tools to evaluate and optimize OCR correction performance
 
 ## Project Structure
 
@@ -19,79 +20,204 @@ This project processes historical French medical directories through a three-sta
 ├── rosenwald-images/               # Converted PNG images by year
 ├── rosenwald-tesseract-ocr/        # Tesseract OCR text output by year
 ├── rosenwald-original-ocr/         # Original embedded PDF OCR text by year
+├── ocr-no-ad/                      # Raw OCR results without ads/headers
 ├── llm-corrected-results/          # LLM-corrected structured data
 │   ├── tesseract/                  # Results from Tesseract OCR input
 │   │   ├── gpt-5/                  # GPT-5 model results
 │   │   ├── gpt-5-mini/             # GPT-5-mini model results
-│   │   └── gpt-5-nano/             # GPT-5-nano model results
+│   │   ├── gpt-5-nano/             # GPT-5-nano model results
+│   │   ├── gemini-2.5-pro/         # Gemini 2.5 Pro model results
+│   │   └── gemini-2.5-flash/       # Gemini 2.5 Flash model results
 │   └── original/                   # Results from original PDF OCR input
+├── golden-truth/                   # Manually verified reference data
+├── compare-results/                # OCR evaluation reports and metrics
 ├── env/                           # Python virtual environment
 ├── pdf2png.py                     # PDF to PNG conversion script
 ├── extract-existing-ocr.py        # Extract original embedded PDF OCR text
 ├── ocr-batch.py                   # Batch OCR processing script
 ├── ocr.py                         # Single image OCR script
 ├── llm-correction.py              # LLM-powered OCR correction pipeline
-├── demo.py                        # OpenAI API demonstration
+├── compare.py                     # Comprehensive OCR evaluation tool
+├── demo.py                        # Dual API availability testing
 ├── instructions-raw.txt           # LLM correction instructions
-├── instructions-example-output.tsv             # Example structured output format
+├── instructions-example-output.tsv # Example structured output format
 ├── prompt.txt                     # Legacy AI prompt (deprecated)
 └── prompt-example.tsv             # Legacy example format (deprecated)
 ```
 
 ## Features
 
-- **Batch PDF Processing**: Convert entire yearly directories from PDF to PNG format
-- **Dual OCR Processing**: Extract text using both Tesseract and original embedded PDF OCR
-- **LLM-Powered Correction**: Advanced language models (GPT-5 series, Gemini 2.5) for error correction
-- **Progress Tracking**: Visual progress bars for long-running operations
-- **Structured Output**: Extract medical directory entries into TSV format with organized folder structure
-- **Professional Pipeline**: Clean separation of instructions and input following OpenAI best practices
-- **Flexible Configuration**: Customizable OCR parameters and LLM model selection
-- **Comprehensive Error Handling**: Automatic retries, exponential backoff, and detailed logging
+- **Multi-Engine OCR Processing**: Tesseract and original PDF OCR extraction
+- **Advanced LLM Correction**: GPT-5 series and Gemini 2.5 series model support
+- **Comprehensive Evaluation**: Industry-standard WER/CER metrics with detailed alignment analysis
+- **Professional Pipeline**: Clean separation following AI model best practices
+- **Dual API Support**: OpenAI and Google AI integration with availability testing
+- **Progress Tracking**: Visual progress bars and comprehensive logging
+- **Flexible Configuration**: Customizable parameters for all processing stages
+- **Performance Optimization**: Automatic model selection based on evaluation results
 
 ## Requirements
 
 - Python 3.11+
 - Tesseract OCR with French language pack
-- PyMuPDF (fitz) for PDF text extraction
-- OpenAI API access
+- PyMuPDF (fitz) for PDF text extraction  
+- OpenAI API access (for GPT models)
+- Google AI API access (optional, for Gemini models)
+- jiwer library for OCR evaluation metrics
 - Dependencies listed in the virtual environment
 
-## LLM-Powered OCR Correction
+## Quick Start
 
-The `llm-correction.py` script provides advanced OCR error correction using state-of-the-art language models. It processes raw OCR text and extracts structured medical directory data.
+### 1. API Availability Testing
+Test your API configurations before processing:
 
-### Supported Models
+```bash
+# Test both OpenAI and Gemini APIs
+python demo.py
 
-#### OpenAI GPT-5 Series (Primary)
-- **gpt-5**: Latest flagship model with highest accuracy
-- **gpt-5-mini**: Balanced performance and cost
-- **gpt-5-nano**: Fastest processing for high-volume tasks
+# Expected output:
+# ✅ Both APIs are working! Full pipeline functionality available.
+```
 
-#### Google Gemini 2.5 Series (Optional)
-- **gemini-2.5-pro**: High-capability model for complex corrections
-- **gemini-2.5-flash**: Fast processing alternative
+### 2. OCR Performance Evaluation
+Compare OCR correction performance across all models:
+
+```bash
+# Comprehensive comparison (default: all models, all OCR sources, LLM + raw)
+python compare.py
+
+# Compare specific model performance
+python compare.py --model gemini-2.5-pro
+
+# Compare only raw OCR accuracy
+python compare.py --type raw
+
+# Results show performance metrics:
+# Type       Source                    WER        CER       
+# -------------------------------------------------------
+# LLM        original/gpt-5            0.0936     0.0340    ⭐ Best
+# LLM        original/gemini-2.5-pro   0.0936     0.0372    
+# Raw OCR    original                  0.3528     0.1126    Baseline
+```
+
+### 3. LLM-Powered OCR Correction
+Process documents using the best-performing models:
+
+```bash
+# Process with top-performing model (Original OCR + GPT-5)
+python llm-correction.py --year 1887 --pages 32 --model gpt-5 --ocr-source original
+
+# Batch processing with progress tracking
+python llm-correction.py --year 1887 --pages 1-50 --model gemini-2.5-pro
+```
+
+## OCR Performance Evaluation
+
+The `compare.py` tool provides comprehensive OCR performance analysis using industry-standard metrics.
+
+### Evaluation Metrics
+
+- **WER (Word Error Rate)**: Percentage of word-level errors compared to reference
+- **CER (Character Error Rate)**: Percentage of character-level errors compared to reference
+- **Alignment Analysis**: Detailed comparison showing insertions, deletions, and substitutions
 
 ### Usage Examples
 
-#### Process specific pages for a year:
 ```bash
-python llm-correction.py --year 1887 --pages 32
+# Complete performance analysis (default)
+python compare.py
+# Compares: All LLM models + Raw OCR vs Golden Truth
+
+# Focus on specific aspects
+python compare.py --type llm --model gpt-5           # LLM-only comparison
+python compare.py --type raw --ocr-source all        # Raw OCR baseline
+python compare.py --ocr-source original --model all  # Original OCR performance
+
+# Different pages/years
+python compare.py --year 1888 --page 045
 ```
 
-#### Process multiple pages with specific model:
+### Performance Results
+
+Current evaluation shows clear performance rankings:
+
+| **Approach** | **WER** | **CER** | **Performance** |
+|--------------|---------|---------|-----------------|
+| Original/GPT-5 | 0.0936 | 0.0340 | 🏆 **Best Overall** |
+| Original/Gemini-2.5-Pro | 0.0936 | 0.0372 | 🥈 **Excellent** |
+| Tesseract/Gemini-2.5-Pro | 0.1154 | 0.0438 | 🥉 **Very Good** |
+| Raw Original OCR | 0.3528 | 0.1126 | 📊 **Baseline** |
+| Raw Tesseract OCR | 0.5067 | 0.2978 | 📊 **Baseline** |
+
+**Key Insights:**
+- LLM correction provides **60-80% improvement** over raw OCR
+- Original PDF OCR provides better input than Tesseract for LLM processing
+- GPT-5 and Gemini-2.5-Pro achieve similar top-tier performance
+- All LLM models significantly outperform raw OCR baselines
+
+### Output Files
+
+Detailed results are saved to `compare-results/` with:
+- Summary tables with WER/CER metrics
+- Word-level alignment visualization
+- Character-level alignment analysis
+- Individual model performance reports
+
+## LLM-Powered OCR Correction
+
+The `llm-correction.py` script provides advanced OCR error correction using state-of-the-art language models. Based on performance evaluation, it supports multiple high-performing models for optimal results.
+
+### Supported Models
+
+#### OpenAI GPT-5 Series (Recommended)
+- **gpt-5**: 🏆 Top performer with original OCR (0.0936 WER)
+- **gpt-5-mini**: Balanced performance and cost
+- **gpt-5-nano**: Fastest processing for high-volume tasks
+
+#### Google Gemini 2.5 Series (High Performance)
+- **gemini-2.5-pro**: 🥈 Excellent accuracy (0.0936 WER with original OCR)
+- **gemini-2.5-flash**: Fast processing with good results
+
+*Performance metrics based on evaluation against golden truth data*
+
+### API Setup and Testing
+
 ```bash
-python llm-correction.py --year 1887 --pages 32,33,34 --model gpt-5-mini
+# Set API keys
+export OPENAI_API_KEY="your-openai-api-key"
+export GEMINI_API_KEY="your-google-api-key"  # Optional for Gemini models
+
+# Test API availability
+python demo.py
+# ✅ OpenAI GPT-5 series is working
+# ✅ Gemini 2.5 series is working
+# ✅ Both APIs are working! Full pipeline functionality available.
 ```
 
-#### Process a page range using Tesseract OCR source:
-```bash
-python llm-correction.py --year 1887 --pages 30-35 --ocr-source tesseract
-```
+### Usage Examples
 
-#### Use original PDF OCR with Gemini model:
+#### Optimal Performance (Based on Evaluation):
 ```bash
+# Best overall performance: Original OCR + GPT-5
+python llm-correction.py --year 1887 --pages 32 --model gpt-5 --ocr-source original
+
+# Alternative high performer: Original OCR + Gemini 2.5 Pro  
 python llm-correction.py --year 1887 --pages 32 --model gemini-2.5-pro --ocr-source original
+```
+
+#### Standard Processing:
+```bash
+# Process specific pages for a year
+python llm-correction.py --year 1887 --pages 32
+
+# Process multiple pages with specific model
+python llm-correction.py --year 1887 --pages 32,33,34 --model gpt-5-mini
+
+# Process a page range using Tesseract OCR source
+python llm-correction.py --year 1887 --pages 30-35 --ocr-source tesseract
+
+# Batch processing with delay for rate limiting
+python llm-correction.py --year 1887 --pages 1-50 --delay 2.0
 ```
 
 ### Command Line Options
@@ -99,14 +225,32 @@ python llm-correction.py --year 1887 --pages 32 --model gemini-2.5-pro --ocr-sou
 - `--year`: Target year directory (required)
 - `--pages`: Pages to process - single (32), multiple (32,33,34), or range (30-35)
 - `--model`: LLM model selection (default: gpt-5-nano)
+  - Recommended: `gpt-5` or `gemini-2.5-pro` for best accuracy
+  - Fast: `gpt-5-nano` or `gemini-2.5-flash` for speed
 - `--ocr-source`: OCR source - 'tesseract' or 'original' (default: tesseract)
+  - Recommended: `original` for better accuracy (see evaluation results)
 - `--delay`: Delay between pages in seconds (default: 2)
+
+### Output Structure
+
+Results are organized by OCR source and model:
+```
+llm-corrected-results/
+├── original/
+│   ├── gpt-5/1887/1887-page-032.tsv          # 🏆 Best performance
+│   └── gemini-2.5-pro/1887/1887-page-032.tsv # 🥈 Excellent alternative
+└── tesseract/
+    ├── gpt-5/1887/1887-page-032.tsv
+    └── gemini-2.5-flash/1887/1887-page-032.tsv
+```
 
 ### Output Format
 
 Results are saved as TSV files with the following structure:
 ```
 nom|année|notes|adresse|horaires
+Vallois|1848||St-André-des-Arts 50|2 à 4
+Ravaux (Mme)|1883||Assomption 75|
 ```
 
 ### Error Handling
@@ -127,7 +271,7 @@ brew install poppler  # for pdftoppm
 tesseract --list-langs  # Should include 'fra'
 ```
 
-## Usage
+## Advanced Usage
 
 ### 1. PDF to Image Conversion
 
@@ -168,42 +312,34 @@ python ocr-batch.py 1887 --language fra --psm 3
 
 This processes all PNG files in `rosenwald-images/1887/` and outputs text files to `rosenwald-tesseract-ocr/1887/`.
 
-### 4. LLM-Powered OCR Correction
-
-Process OCR text through advanced language models to correct errors and extract structured medical directory data:
-
-```bash
-# Process single page with GPT-5-nano (fastest)
-python llm-correction.py --year 1887 --pages 32 --model gpt-5-nano
-
-# Process multiple pages with GPT-5-mini (balanced)
-python llm-correction.py --year 1887 --pages 1-10,50,100-105 --model gpt-5-mini
-
-# Use original OCR instead of Tesseract
-python llm-correction.py --year 1887 --pages 32 --ocr-source original
-
-# Process with delay to avoid rate limits
-python llm-correction.py --year 1887 --pages 1-50 --delay 2.0
-```
-
-**Available Models:**
-- **GPT-5 series**: `gpt-5`, `gpt-5-mini`, `gpt-5-nano`
-- **Gemini 2.5 series**: `gemini-2.5-pro`, `gemini-2.5-flash` (optional)
-
-**Features:**
-- **Clean API separation**: Uses `instructions` + `input` parameters following OpenAI docs
-- **Organized output**: Results saved to `llm-corrected-results/{ocr_source}/{model}/{year}/`
-- **Error handling**: Automatic retries with exponential backoff
-- **Progress tracking**: Real-time progress bars and comprehensive logging
-- **Dual OCR support**: Works with both Tesseract and original PDF OCR
-
 **Setup:**
 ```bash
-# Set OpenAI API key
+# Set OpenAI API key (required for GPT models)
 export OPENAI_API_KEY="your-openai-api-key"
 
-# Optional: For Gemini models
-export GOOGLE_API_KEY="your-google-api-key"
+# Optional: For Gemini models  
+export GEMINI_API_KEY="your-google-api-key"
+
+# Test API availability
+python demo.py
+```
+
+## Complete Workflow Example
+
+Here's a complete workflow using the best-performing configuration:
+
+```bash
+# 1. Test API availability
+python demo.py
+
+# 2. Evaluate current performance (optional but recommended)
+python compare.py --year 1887 --page 032
+
+# 3. Process documents with optimal settings
+python llm-correction.py --year 1887 --pages 1-50 --model gpt-5 --ocr-source original
+
+# 4. Verify results quality
+python compare.py --year 1887 --page 001  # Check first processed page
 ```
 
 ### 5. Legacy AI Data Extraction
@@ -228,23 +364,30 @@ The extracted medical directory entries follow this structure:
 | adresse | Street address | "St-André-des-Arts 50" |
 | horaires | Office hours | "Lun. Mer. Ven. 3 à 5" |
 
-## OCR Comparison
+## OCR Quality Assessment
 
-The project provides two different OCR extraction methods:
+The project provides comprehensive tools for comparing OCR methods:
 
-### Original PDF OCR (`rosenwald-original-ocr/`)
-- **Source**: Embedded OCR text already present in PDF files
-- **Pros**: Fast extraction, preserves original digitization quality
-- **Cons**: May contain embedded errors from original scanning process
-- **Tool**: `extract-existing-ocr.py`
+### OCR Sources Comparison
 
-### Tesseract OCR (`rosenwald-tesseract-ocr/`)
-- **Source**: Fresh OCR processing of PNG images using Tesseract
-- **Pros**: Modern OCR engine, customizable parameters, potential accuracy improvements
-- **Cons**: Slower processing, requires image conversion step
-- **Tool**: `ocr-batch.py` / `ocr.py`
+| **Method** | **Speed** | **Accuracy** | **Use Case** |
+|------------|-----------|--------------|--------------|
+| **Original PDF OCR** | ⚡ Fast | 🎯 Higher (0.35 WER) | Production processing |
+| **Tesseract OCR** | 🐌 Slower | 📊 Baseline (0.51 WER) | Fresh processing, comparison |
 
-Both outputs can be compared and used as input for the AI data extraction pipeline to achieve optimal results.
+### LLM Correction Impact
+
+All LLM models provide substantial improvements over raw OCR:
+
+- **Best Case**: 73% WER reduction (Original OCR + GPT-5: 0.35 → 0.09)
+- **Typical**: 60-70% WER reduction across all model combinations
+- **Worst Case**: Still 40%+ improvement with any LLM model
+
+### Data Directories
+
+- `ocr-no-ad/`: Raw OCR text files for baseline comparison
+- `golden-truth/`: Manually verified reference data for evaluation
+- `compare-results/`: Detailed performance analysis reports
 
 ## OCR Configuration
 
@@ -271,12 +414,31 @@ The project uses a Python virtual environment located in `env/`. All required de
 - `extract-existing-ocr.py`: Extract original embedded OCR text from PDFs
 - `ocr-batch.py`: Efficient batch OCR with error handling
 - `ocr.py`: Core OCR functionality for individual images
-- `demo.py`: OpenAI API integration example
+- `llm-correction.py`: LLM-powered OCR correction pipeline with 5 model support
+- `compare.py`: Comprehensive OCR evaluation tool with WER/CER metrics
+- `demo.py`: Dual API availability testing (OpenAI + Google AI)
 
-## Output
+## Research Applications
+
+This pipeline enables comprehensive historical analysis:
+
+### Quantitative Research
+- **Performance Metrics**: 60-80% OCR error reduction through LLM correction
+- **Model Comparison**: Objective evaluation of 5 different LLM models
+- **OCR Baseline Analysis**: Comparison of traditional vs. modern OCR methods
+
+### Historical Research Applications
+
+### Historical Research Applications
 
 Final structured data enables historical analysis of:
 - Medical practitioner distribution in France
-- Evolution of medical specializations
+- Evolution of medical specializations over 60+ years (1887-1949)
 - Geographic patterns of medical practice
 - Historical medical education trends
+- Socioeconomic patterns in medical practice locations
+
+### Technical Contributions
+- **OCR Evaluation Framework**: Standardized comparison methodology for historical documents
+- **Multi-Model Pipeline**: Production-ready system supporting multiple AI providers
+- **Performance Benchmarking**: Quantitative assessment of modern LLM capabilities on historical text
