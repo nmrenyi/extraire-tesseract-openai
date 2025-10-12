@@ -49,32 +49,32 @@ def main():
         {
             "cmd": ["python", "llm-correction.py", 
                    "--year", year, 
-                   "--page", page_str,
-                   "--source", "original",
+                   "--pages", page_str,
+                   "--ocr-source", "original",
                    "--model", "gpt-5"],
             "description": f"LLM correction: Original OCR + GPT-5 for {year} page {page}"
         },
         {
             "cmd": ["python", "llm-correction.py", 
                    "--year", year, 
-                   "--page", page_str,
-                   "--source", "original", 
+                   "--pages", page_str,
+                   "--ocr-source", "original", 
                    "--model", "gemini-2.5-pro"],
             "description": f"LLM correction: Original OCR + Gemini 2.5 Pro for {year} page {page}"
         },
         {
             "cmd": ["python", "llm-correction.py", 
                    "--year", year, 
-                   "--page", page_str,
-                   "--source", "original",
+                   "--pages", page_str,
+                   "--ocr-source", "original",
                    "--model", "gpt-5-mini"],
             "description": f"LLM correction: Original OCR + GPT-5-mini for {year} page {page}"
         },
         {
             "cmd": ["python", "llm-correction.py", 
                    "--year", year, 
-                   "--page", page_str,
-                   "--source", "original",
+                   "--pages", page_str,
+                   "--ocr-source", "original",
                    "--model", "gemini-2.5-flash"],
             "description": f"LLM correction: Original OCR + Gemini 2.5 Flash for {year} page {page}"
         },
@@ -83,32 +83,32 @@ def main():
         {
             "cmd": ["python", "llm-correction.py", 
                    "--year", year, 
-                   "--page", page_str,
-                   "--source", "tesseract",
+                   "--pages", page_str,
+                   "--ocr-source", "tesseract",
                    "--model", "gpt-5"],
             "description": f"LLM correction: Tesseract OCR + GPT-5 for {year} page {page}"
         },
         {
             "cmd": ["python", "llm-correction.py", 
                    "--year", year, 
-                   "--page", page_str,
-                   "--source", "tesseract",
+                   "--pages", page_str,
+                   "--ocr-source", "tesseract",
                    "--model", "gemini-2.5-pro"],
             "description": f"LLM correction: Tesseract OCR + Gemini 2.5 Pro for {year} page {page}"
         },
         {
             "cmd": ["python", "llm-correction.py", 
                    "--year", year, 
-                   "--page", page_str,
-                   "--source", "tesseract",
+                   "--pages", page_str,
+                   "--ocr-source", "tesseract",
                    "--model", "gpt-5-mini"],
             "description": f"LLM correction: Tesseract OCR + GPT-5-mini for {year} page {page}"
         },
         {
             "cmd": ["python", "llm-correction.py", 
                    "--year", year, 
-                   "--page", page_str,
-                   "--source", "tesseract",
+                   "--pages", page_str,
+                   "--ocr-source", "tesseract",
                    "--model", "gemini-2.5-flash"],
             "description": f"LLM correction: Tesseract OCR + Gemini 2.5 Flash for {year} page {page}"
         }
