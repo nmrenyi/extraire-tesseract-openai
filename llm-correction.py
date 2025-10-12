@@ -303,9 +303,9 @@ class LLMCorrector:
         if pages:
             filtered_files = []
             for page_num in pages:
-                page_file = ocr_dir / f"{year}-page-{page_num:03d}.txt"
+                page_file = ocr_dir / f"{year}-page-{page_num:04d}.txt"
                 if page_file.exists():
-                    filtered_files.append((page_file, f"{year}-page-{page_num:03d}"))
+                    filtered_files.append((page_file, f"{year}-page-{page_num:04d}"))
                 else:
                     logger.warning(f"Page file not found: {page_file}")
             return filtered_files

@@ -58,8 +58,8 @@ def main():
         description='Single file OCR processing using Tesseract',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''Examples:
-  %(prog)s 1887 1                 # Process 1887-page-001.png
-  %(prog)s 1887 149               # Process 1887-page-149.png
+  %(prog)s 1887 1                 # Process 1887-page-0001.png
+  %(prog)s 1887 149               # Process 1887-page-0149.png
   %(prog)s 1888 25 --language eng # Process with English language
         '''
     )
@@ -72,7 +72,7 @@ def main():
     parser.add_argument(
         'page',
         type=int,
-        help='Page number (e.g., 1, 149, 025)'
+        help='Page number (e.g., 1, 149, 1000)'
     )
     
     parser.add_argument(
@@ -90,7 +90,7 @@ def main():
     args = parser.parse_args()
     
     # Build file paths
-    page_num = f"{args.page:03d}"  # Format as 001, 002, etc.
+    page_num = f"{args.page:04d}"  # Format as 0001, 0002, etc.
     image_path = f"rosenwald-images/{args.year}/{args.year}-page-{page_num}.png"
     output_path = f"rosenwald-tesseract-ocr/{args.year}/{args.year}-page-{page_num}.txt"
     

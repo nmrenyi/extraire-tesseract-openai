@@ -7,7 +7,7 @@ from pathlib import Path
 def get_hypothesis(ocr_source: str, model: str, year: str, page: str) -> str:
     """Load hypothesis text from LLM corrected results."""
     # Construct path to LLM corrected results
-    result_path = f"llm-corrected-results/{ocr_source}/{model}/{year}/{year}-page-{page.zfill(3)}.tsv"
+    result_path = f"llm-corrected-results/{ocr_source}/{model}/{year}/{year}-page-{page.zfill(4)}.tsv"
     
     with open(result_path, "r", encoding="utf-8") as f:
         content = f.read().strip().replace("\t", " ")
@@ -17,7 +17,7 @@ def get_hypothesis(ocr_source: str, model: str, year: str, page: str) -> str:
 
 def get_raw_ocr_hypothesis(ocr_type: str, year: str, page: str) -> str:
     """Load hypothesis text from raw OCR results in ocr-no-ad directory."""
-    result_path = f"ocr-no-ad/{year}-page-{page.zfill(3)}-{ocr_type}.txt"
+    result_path = f"ocr-no-ad/{year}-page-{page.zfill(4)}-{ocr_type}.txt"
     
     with open(result_path, "r", encoding="utf-8") as f:
         content = f.read().strip()
@@ -27,7 +27,7 @@ def get_raw_ocr_hypothesis(ocr_type: str, year: str, page: str) -> str:
 
 def get_reference(year: str, page: str) -> str:
     """Load reference (golden truth) text from golden-truth directory."""
-    with open(f'golden-truth/{year}-page-{page.zfill(3)}.tsv', 'r', encoding='utf-8') as f:
+    with open(f'golden-truth/{year}-page-{page.zfill(4)}.tsv', 'r', encoding='utf-8') as f:
         return ' '.join(f.read().strip().replace("\t", " ").split('\n')[1:])
 
 
@@ -61,10 +61,10 @@ def save_comparison_results(comparison_type: str, source_name: str, year: str, p
     """Save comparison results to file."""
     os.makedirs(output_dir, exist_ok=True)
     
-    output_file = os.path.join(output_dir, f"{year}-page-{page.zfill(3)}-{comparison_type}-{source_name}-comparison.txt")
+    output_file = os.path.join(output_dir, f"{year}-page-{page.zfill(4)}-{comparison_type}-{source_name}-comparison.txt")
     
     with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(f"Comparison Results for {source_name} ({comparison_type}) - {year}-page-{page.zfill(3)}\n")
+        f.write(f"Comparison Results for {source_name} ({comparison_type}) - {year}-page-{page.zfill(4)}\n")
         f.write("=" * 70 + "\n\n")
         f.write(f"Word Error Rate (WER): {metrics['wer']:.4f}\n")
         f.write(f"Character Error Rate (CER): {metrics['cer']:.4f}\n\n")
@@ -96,8 +96,8 @@ def main():
                        default='1887',
                        help='Year to analyze (default: 1887)')
     parser.add_argument('--page', 
-                       default='032',
-                       help='Page number to analyze (default: 032)')
+                       default='0032',
+                       help='Page number to analyze (default: 0032)')
     parser.add_argument('--output-dir',
                        default='compare-results',
                        help='Output directory for results (default: compare-results)')
@@ -125,8 +125,8 @@ def main():
     try:
         reference = get_reference(args.year, args.page)
     except FileNotFoundError:
-        print(f"Error: Golden truth file not found for {args.year}-page-{args.page.zfill(3)}")
-        print(f"Expected file: golden-truth/{args.year}-page-{args.page.zfill(3)}.tsv")
+        print(f"Error: Golden truth file not found for {args.year}-page-{args.page.zfill(4)}")
+        print(f"Expected file: golden-truth/{args.year}-page-{args.page.zfill(4)}.tsv")
         return
     
     # Collect all results
@@ -158,8 +158,8 @@ def main():
                     save_comparison_results('llm', f"{ocr_source}-{model}", args.year, args.page, metrics, args.output_dir)
                     
                 except FileNotFoundError:
-                    print(f"Warning: Results file not found for {model} on {ocr_source} OCR - {args.year}-page-{args.page.zfill(3)}")
-                    print(f"Expected file: llm-corrected-results/{ocr_source}/{model}/{args.year}/{args.year}-page-{args.page.zfill(3)}.tsv")
+                    print(f"Warning: Results file not found for {model} on {ocr_source} OCR - {args.year}-page-{args.page.zfill(4)}")
+                    print(f"Expected file: llm-corrected-results/{ocr_source}/{model}/{args.year}/{args.year}-page-{args.page.zfill(4)}.tsv")
                     continue
     
     if args.type in ['raw', 'both']:
@@ -186,14 +186,14 @@ def main():
                 save_comparison_results('raw', ocr_type, args.year, args.page, metrics, args.output_dir)
                 
             except FileNotFoundError:
-                print(f"Warning: Raw OCR file not found for {ocr_type} - {args.year}-page-{args.page.zfill(3)}")
-                print(f"Expected file: ocr-no-ad/{args.year}-page-{args.page.zfill(3)}-{ocr_type}.txt")
+                print(f"Warning: Raw OCR file not found for {ocr_type} - {args.year}-page-{args.page.zfill(4)}")
+                print(f"Expected file: ocr-no-ad/{args.year}-page-{args.page.zfill(4)}-{ocr_type}.txt")
                 continue
     
     # Display results in table format
     if results:
         print(f"\nOCR Comparison Results")
-        print(f"Type: {args.type.upper()} | Year: {args.year} | Page: {args.page.zfill(3)}")
+        print(f"Type: {args.type.upper()} | Year: {args.year} | Page: {args.page.zfill(4)}")
         print("=" * 80)
         print(f"{'Type':<10} {'Source':<25} {'WER':<10} {'CER':<10}")
         print("-" * 55)
@@ -207,13 +207,13 @@ def main():
         
         if args.type in ['llm', 'both']:
             print(f"\nMake sure you have LLM correction results in:")
-            print(f"llm-corrected-results/{args.ocr_source}/{{model}}/{args.year}/{args.year}-page-{args.page.zfill(3)}.tsv")
+            print(f"llm-corrected-results/{args.ocr_source}/{{model}}/{args.year}/{args.year}-page-{args.page.zfill(4)}.tsv")
         if args.type in ['raw', 'both']:
             print(f"\nMake sure you have raw OCR results in:")
-            print(f"ocr-no-ad/{args.year}-page-{args.page.zfill(3)}-{{ocr_type}}.txt")
+            print(f"ocr-no-ad/{args.year}-page-{args.page.zfill(4)}-{{ocr_type}}.txt")
             
         print(f"\nAnd golden truth in:")
-        print(f"golden-truth/{args.year}-page-{args.page.zfill(3)}.tsv")
+        print(f"golden-truth/{args.year}-page-{args.page.zfill(4)}.tsv")
 
 
 if __name__ == "__main__":

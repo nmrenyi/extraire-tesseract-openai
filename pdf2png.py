@@ -69,7 +69,7 @@ def convert_pdf_to_png_with_progress(pdf_path, output_dir, dpi=300):
         failed_pages = []
         with tqdm(range(1, page_count + 1), desc=f"Converting {year}", unit="page") as pbar:
             for page_num in pbar:
-                output_file = year_dir / f"{year}-page-{page_num:03d}.png"
+                output_file = year_dir / f"{year}-page-{page_num:04d}.png"
                 
                 # Convert single page
                 cmd = [

@@ -59,7 +59,7 @@ def extract_text_from_pdf(pdf_path: str, output_dir: str = None) -> bool:
                     if output_dir:
                         # Save to individual text file
                         page_num = page_idx + 1
-                        output_file = out_dir / f"{pdf_file.stem}-page-{page_num:03d}.txt"
+                        output_file = out_dir / f"{pdf_file.stem}-page-{page_num:04d}.txt"
                         
                         with open(output_file, 'w', encoding='utf-8') as f:
                             f.write(text.strip())

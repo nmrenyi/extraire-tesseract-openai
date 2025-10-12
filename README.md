@@ -66,6 +66,15 @@ This project processes historical French medical directories through a complete 
 - jiwer library for OCR evaluation metrics
 - Dependencies listed in the virtual environment
 
+## PDF Limitations
+
+⚠️ **Important**: PDFs must contain **fewer than 10,000 pages** due to the 4-digit page numbering system used throughout the pipeline (0001-9999). 
+
+- **Supported**: PDFs with 1-9,999 pages ✅
+- **Not supported**: PDFs with 10,000+ pages ❌
+
+The Rosenwald collection (1887-1949) contains 47 PDFs with a maximum of 1,622 pages, well within this limit. If you need to process larger documents, consider splitting them into smaller PDFs first.
+
 ## Quick Start
 
 ### 1. API Availability Testing
