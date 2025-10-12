@@ -333,23 +333,205 @@ export GEMINI_API_KEY="your-google-api-key"
 python demo.py
 ```
 
-## Complete Workflow Example
+## Complete Pipeline Guide
 
-Here's a complete workflow using the best-performing configuration:
+This section provides step-by-step instructions to run the entire OCR processing pipeline from scratch, starting with PDF files and producing structured medical directory data.
+
+### Prerequisites
+
+1. **Setup Environment:**
+```bash
+# Activate the conda environment
+conda activate rosenwald
+
+# Verify API keys are set
+echo $OPENAI_API_KEY
+echo $GEMINI_API_KEY  # Optional for Gemini models
+
+# Test API availability
+python demo.py
+```
+
+2. **Verify PDF Collection:**
+```bash
+# Check which PDFs are available
+ls pdfs/
+
+# Check page counts (optional)
+python -c "
+import fitz
+for pdf_path in sorted(Path('pdfs').glob('*.pdf')):
+    doc = fitz.open(str(pdf_path))
+    print(f'{pdf_path.stem}: {len(doc):,} pages')
+    doc.close()
+"
+```
+
+### Pipeline Steps
+
+#### Step 1: PDF to Images (Optional)
+Convert PDF pages to high-quality PNG images:
 
 ```bash
-# 1. Test API availability
-python demo.py
+# Convert specific year
+python pdf2png.py --year 1887 --dpi 300
 
-# 2. Evaluate current performance (optional but recommended)
-python compare.py --year 1887 --page 032
+# Batch convert multiple years
+for year in 1887 1888 1889; do
+    python pdf2png.py --year $year --dpi 300
+done
+```
 
-# 3. Process documents with optimal settings
+**Output:** `rosenwald-images/{year}/{year}-page-{NNNN}.png`
+
+#### Step 2: Extract Original OCR Text
+Extract embedded OCR text directly from PDFs:
+
+```bash
+# Extract from specific year
+python extract-existing-ocr.py --year 1887
+
+# Extract from all PDFs
+for pdf in pdfs/*.pdf; do
+    year=$(basename "$pdf" .pdf)
+    python extract-existing-ocr.py --year "$year"
+done
+```
+
+**Output:** `rosenwald-original-ocr/{year}/{year}-page-{NNNN}.txt`
+
+#### Step 3: Tesseract OCR (Optional)
+Generate fresh OCR text using Tesseract:
+
+```bash
+# Process specific year (requires images from Step 1)
+python ocr-batch.py 1887 --language fra --psm 3
+
+# Process single page
+python ocr.py 1887 32 --language fra
+```
+
+**Output:** `rosenwald-tesseract-ocr/{year}/{year}-page-{NNNN}.txt`
+
+#### Step 4: LLM-Powered OCR Correction
+Process OCR text through AI models to extract structured data:
+
+```bash
+# Best performance: Original OCR + GPT-5
 python llm-correction.py --year 1887 --pages 1-50 --model gpt-5 --ocr-source original
 
-# 4. Verify results quality
-python compare.py --year 1887 --page 001  # Check first processed page
+# Alternative: Original OCR + Gemini 2.5 Pro
+python llm-correction.py --year 1887 --pages 1-50 --model gemini-2.5-pro --ocr-source original
+
+# Process multiple years
+for year in 1887 1888 1889; do
+    python llm-correction.py --year "$year" --model gpt-5 --ocr-source original
+done
+
+# Process specific page ranges for large PDFs
+python llm-correction.py --year 1925 --pages 1-100 --model gpt-5 --ocr-source original
+python llm-correction.py --year 1925 --pages 101-200 --model gpt-5 --ocr-source original
 ```
+
+**Output:** `llm-corrected-results/{ocr-source}/{model}/{year}/{year}-page-{NNNN}.tsv`
+
+#### Step 5: Quality Evaluation
+Compare results against golden truth data:
+
+```bash
+# Evaluate specific page
+python compare.py --year 1887 --page 0032
+
+# Compare different models
+python compare.py --year 1887 --page 0032 --model gpt-5
+python compare.py --year 1887 --page 0032 --model gemini-2.5-pro
+
+# Compare OCR sources
+python compare.py --year 1887 --page 0032 --ocr-source original
+python compare.py --year 1887 --page 0032 --ocr-source tesseract
+```
+
+**Output:** `compare-results/{year}-page-{NNNN}-{comparison-type}-{source}-comparison.txt`
+
+### Complete Example Workflow
+
+Here's a complete workflow for processing a single year:
+
+```bash
+# 1. Setup and verify
+conda activate rosenwald
+python demo.py
+
+# 2. Extract original OCR text
+python extract-existing-ocr.py --year 1887
+
+# 3. Process through best-performing LLM
+python llm-correction.py --year 1887 --model gpt-5 --ocr-source original
+
+# 4. Evaluate quality
+python compare.py --year 1887 --page 0032
+
+# 5. Check results
+ls llm-corrected-results/original/gpt-5/1887/
+head llm-corrected-results/original/gpt-5/1887/1887-page-0032.tsv
+```
+
+### Batch Processing Large Collection
+
+For processing the entire Rosenwald collection (1887-1949):
+
+```bash
+#!/bin/bash
+# batch_process_all.sh
+
+# Activate environment
+conda activate rosenwald
+
+# Process all PDFs
+for pdf in pdfs/*.pdf; do
+    year=$(basename "$pdf" .pdf)
+    echo "Processing year: $year"
+    
+    # Extract original OCR
+    python extract-existing-ocr.py --year "$year"
+    
+    # Process through LLM (with delay for rate limiting)
+    python llm-correction.py --year "$year" --model gpt-5 --ocr-source original --delay 2
+    
+    echo "Completed: $year"
+done
+
+echo "All years processed!"
+```
+
+### Monitoring Progress
+
+Track processing progress:
+
+```bash
+# Count processed files
+find llm-corrected-results/original/gpt-5/ -name "*.tsv" | wc -l
+
+# Check which years are complete
+for year in {1887..1949}; do
+    if [ -d "llm-corrected-results/original/gpt-5/$year" ]; then
+        count=$(ls llm-corrected-results/original/gpt-5/$year/*.tsv 2>/dev/null | wc -l)
+        echo "$year: $count files processed"
+    fi
+done
+```
+
+### Troubleshooting
+
+**Common Issues:**
+
+1. **API Rate Limits:** Add `--delay 2` to LLM processing
+2. **Large PDFs:** Process in chunks using `--pages 1-100`, `--pages 101-200`, etc.
+3. **Missing Files:** Check that OCR extraction completed successfully
+4. **Permission Errors:** Ensure write permissions in output directories
+
+**Resume Processing:**
+The pipeline can be resumed at any step. Existing files are typically not overwritten, so you can safely re-run commands.
 
 ### 5. Legacy AI Data Extraction
 
