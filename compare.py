@@ -139,6 +139,20 @@ def main():
         print(f"Expected file: golden-truth/{args.year}-page-{args.page.zfill(4)}.tsv")
         return
     
+    # Count golden truth entries
+    def count_golden_truth_entries(year: str, page: str) -> int:
+        """Count the number of entries in golden truth file (excluding header)."""
+        try:
+            with open(f'golden-truth/{year}-page-{page.zfill(4)}.tsv', 'r', encoding='utf-8') as f:
+                lines = f.read().strip().split('\n')
+                # Remove header line and count non-empty lines
+                data_lines = [line.strip() for line in lines[1:] if line.strip()]
+                return len(data_lines)
+        except FileNotFoundError:
+            return 0
+    
+    golden_truth_count = count_golden_truth_entries(args.year, args.page)
+    
     # Collect all results
     results = []
     
@@ -184,10 +198,10 @@ def main():
                     # Store results
                     results.append({
                         'llm': model,
-                        'ocr_source': ocr_source,
+                        'ocr_source': '-' if ocr_source == 'only-llm' else ocr_source,
                         'wer': metrics['wer'],
                         'cer': metrics['cer'],
-                        'items': n_items
+                        'items': f"{n_items}/{golden_truth_count}"
                     })
                     # Save detailed results to file
                     save_comparison_results('llm', f"{ocr_source}-{model}", args.year, args.page, metrics, args.output_dir)
@@ -211,11 +225,11 @@ def main():
                 metrics = calculate_metrics(reference, hypothesis, tr_word, tr_char)
                 # Store results (no item count for raw)
                 results.append({
-                    'llm': 'N/A',
+                    'llm': '-',
                     'ocr_source': ocr_type,
                     'wer': metrics['wer'],
                     'cer': metrics['cer'],
-                    'items': 'N/A'
+                    'items': '-'
                 })
                 # Save detailed results to file
                 save_comparison_results('raw', ocr_type, args.year, args.page, metrics, args.output_dir)
@@ -228,11 +242,11 @@ def main():
     if results:
         print(f"\nOCR Comparison Results")
         print(f"Year: {args.year} | Page: {args.page.zfill(4)}")
-        print("=" * 80)
+        print("=" * 85)
         print(f"{'LLM':<20} {'OCR-Source':<15} {'WER':<10} {'CER':<10} {'#Entries':<10}")
-        print("-" * 80)
+        print("-" * 85)
         for result in results:
-            items_str = str(result['items']) if result['items'] != 'N/A' else 'N/A'
+            items_str = result['items'] if result['items'] != '-' else '-'
             print(f"{result['llm']:<20} {result['ocr_source']:<15} {result['wer']:<10.4f} {result['cer']:<10.4f} {items_str:<10}")
         print(f"\nDetailed comparison results saved in: {args.output_dir}/")
     else:
