@@ -15,6 +15,22 @@ def get_hypothesis(ocr_source: str, model: str, year: str, page: str) -> str:
         return ' '.join(content.split('\n')[1:])
 
 
+def get_only_llm_hypothesis(model: str, year: str, page: str) -> str:
+    """Load hypothesis text from only-llm results (direct image processing)."""
+    # Handle different naming conventions for models
+    model_filename = model
+    if model == 'gpt-5':
+        model_filename = 'gpt5'  # Handle the different naming in files
+    
+    # Construct path to only-llm results
+    result_path = f"llm-corrected-results/only-llm/{year}-page-{page.zfill(4)}-{model_filename}.tsv"
+    
+    with open(result_path, "r", encoding="utf-8") as f:
+        content = f.read().strip().replace("\t", " ")
+        # For TSV files, skip the first line (header)
+        return ' '.join(content.split('\n')[1:])
+
+
 def get_raw_ocr_hypothesis(ocr_type: str, year: str, page: str) -> str:
     """Load hypothesis text from raw OCR results in ocr-no-ad directory."""
     result_path = f"ocr-no-ad/{year}-page-{page.zfill(4)}-{ocr_type}.txt"
@@ -85,7 +101,7 @@ def main():
                        default='both',
                        help='Comparison type: llm-corrected results, raw OCR, or both (default: both)')
     parser.add_argument('--ocr-source', 
-                       choices=['original', 'tesseract', 'all'],
+                       choices=['original', 'tesseract', 'only-llm', 'all'],
                        default='all',
                        help='OCR source to compare (default: all)')
     parser.add_argument('--model', 
@@ -135,13 +151,23 @@ def main():
     if args.type in ['llm', 'both']:
         # LLM-corrected results comparison
         models = ['gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gemini-2.5-pro', 'gemini-2.5-flash'] if args.model == 'all' else [args.model]
-        ocr_sources_for_llm = ['original', 'tesseract'] if args.ocr_source == 'all' else [args.ocr_source]
+        
+        # Handle different OCR sources
+        if args.ocr_source == 'all':
+            ocr_sources_for_llm = ['original', 'tesseract', 'only-llm']
+        elif args.ocr_source == 'only-llm':
+            ocr_sources_for_llm = ['only-llm']
+        else:
+            ocr_sources_for_llm = [args.ocr_source]
         
         for ocr_source in ocr_sources_for_llm:
             for model in models:
                 try:
-                    # Load hypothesis
-                    hypothesis = get_hypothesis(ocr_source, model, args.year, args.page)
+                    # Load hypothesis based on source type
+                    if ocr_source == 'only-llm':
+                        hypothesis = get_only_llm_hypothesis(model, args.year, args.page)
+                    else:
+                        hypothesis = get_hypothesis(ocr_source, model, args.year, args.page)
                     
                     # Calculate metrics
                     metrics = calculate_metrics(reference, hypothesis, tr_word, tr_char)
@@ -158,8 +184,12 @@ def main():
                     save_comparison_results('llm', f"{ocr_source}-{model}", args.year, args.page, metrics, args.output_dir)
                     
                 except FileNotFoundError:
-                    print(f"Warning: Results file not found for {model} on {ocr_source} OCR - {args.year}-page-{args.page.zfill(4)}")
-                    print(f"Expected file: llm-corrected-results/{ocr_source}/{model}/{args.year}/{args.year}-page-{args.page.zfill(4)}.tsv")
+                    if ocr_source == 'only-llm':
+                        print(f"Warning: Only-LLM results file not found for {model} - {args.year}-page-{args.page.zfill(4)}")
+                        print(f"Expected file: llm-corrected-results/only-llm/{args.year}-page-{args.page.zfill(4)}-{model}.tsv")
+                    else:
+                        print(f"Warning: Results file not found for {model} on {ocr_source} OCR - {args.year}-page-{args.page.zfill(4)}")
+                        print(f"Expected file: llm-corrected-results/{ocr_source}/{model}/{args.year}/{args.year}-page-{args.page.zfill(4)}.tsv")
                     continue
     
     if args.type in ['raw', 'both']:
@@ -207,7 +237,10 @@ def main():
         
         if args.type in ['llm', 'both']:
             print(f"\nMake sure you have LLM correction results in:")
-            print(f"llm-corrected-results/{args.ocr_source}/{{model}}/{args.year}/{args.year}-page-{args.page.zfill(4)}.tsv")
+            if args.ocr_source in ['original', 'tesseract', 'all']:
+                print(f"llm-corrected-results/{args.ocr_source}/{{model}}/{args.year}/{args.year}-page-{args.page.zfill(4)}.tsv")
+            if args.ocr_source in ['only-llm', 'all']:
+                print(f"llm-corrected-results/only-llm/{args.year}-page-{args.page.zfill(4)}-{{model}}.tsv")
         if args.type in ['raw', 'both']:
             print(f"\nMake sure you have raw OCR results in:")
             print(f"ocr-no-ad/{args.year}-page-{args.page.zfill(4)}-{{ocr_type}}.txt")
