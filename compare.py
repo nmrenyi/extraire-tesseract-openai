@@ -17,13 +17,7 @@ def get_hypothesis(ocr_source: str, model: str, year: str, page: str) -> str:
 
 def get_only_llm_hypothesis(model: str, year: str, page: str) -> str:
     """Load hypothesis text from only-llm results (direct image processing)."""
-    # Handle different naming conventions for models
-    model_filename = model
-    if model == 'gpt-5':
-        model_filename = 'gpt5'  # Handle the different naming in files
-    
-    # Construct path to only-llm results
-    result_path = f"llm-corrected-results/only-llm/{year}-page-{page.zfill(4)}-{model_filename}.tsv"
+    result_path = f"llm-corrected-results/only-llm/{year}-page-{page.zfill(4)}-{model}.tsv"
     
     with open(result_path, "r", encoding="utf-8") as f:
         content = f.read().strip().replace("\t", " ")
@@ -148,6 +142,21 @@ def main():
     # Collect all results
     results = []
     
+    def count_llm_items_from_file(ocr_source: str, model: str, year: str, page: str) -> int:
+        """Count the number of items (lines excluding header) from LLM result file."""
+        try:
+            if ocr_source == 'only-llm':
+                result_path = f"llm-corrected-results/only-llm/{year}-page-{page.zfill(4)}-{model}.tsv"
+            else:
+                result_path = f"llm-corrected-results/{ocr_source}/{model}/{year}/{year}-page-{page.zfill(4)}.tsv"
+            
+            with open(result_path, "r", encoding="utf-8") as f:
+                lines = f.read().strip().split('\n')
+                # Remove header line and count non-empty lines
+                data_lines = [line.strip() for line in lines[1:] if line.strip()]
+                return len(data_lines)
+        except FileNotFoundError:
+            return 0
     if args.type in ['llm', 'both']:
         # LLM-corrected results comparison
         models = ['gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gemini-2.5-pro', 'gemini-2.5-flash'] if args.model == 'all' else [args.model]
@@ -168,21 +177,20 @@ def main():
                         hypothesis = get_only_llm_hypothesis(model, args.year, args.page)
                     else:
                         hypothesis = get_hypothesis(ocr_source, model, args.year, args.page)
-                    
                     # Calculate metrics
                     metrics = calculate_metrics(reference, hypothesis, tr_word, tr_char)
-                    
+                    # Count items
+                    n_items = count_llm_items_from_file(ocr_source, model, args.year, args.page)
                     # Store results
                     results.append({
                         'type': 'LLM',
                         'source': f"{ocr_source}/{model}",
                         'wer': metrics['wer'],
-                        'cer': metrics['cer']
+                        'cer': metrics['cer'],
+                        'items': n_items
                     })
-                    
                     # Save detailed results to file
                     save_comparison_results('llm', f"{ocr_source}-{model}", args.year, args.page, metrics, args.output_dir)
-                    
                 except FileNotFoundError:
                     if ocr_source == 'only-llm':
                         print(f"Warning: Only-LLM results file not found for {model} - {args.year}-page-{args.page.zfill(4)}")
@@ -195,26 +203,22 @@ def main():
     if args.type in ['raw', 'both']:
         # Raw OCR results comparison
         ocr_types = ['original', 'tesseract'] if args.ocr_source == 'all' else [args.ocr_source]
-        
         for ocr_type in ocr_types:
             try:
                 # Load hypothesis
                 hypothesis = get_raw_ocr_hypothesis(ocr_type, args.year, args.page)
-                
                 # Calculate metrics
                 metrics = calculate_metrics(reference, hypothesis, tr_word, tr_char)
-                
-                # Store results
+                # Store results (no item count for raw)
                 results.append({
                     'type': 'Raw OCR',
                     'source': ocr_type,
                     'wer': metrics['wer'],
-                    'cer': metrics['cer']
+                    'cer': metrics['cer'],
+                    'items': ''
                 })
-                
                 # Save detailed results to file
                 save_comparison_results('raw', ocr_type, args.year, args.page, metrics, args.output_dir)
-                
             except FileNotFoundError:
                 print(f"Warning: Raw OCR file not found for {ocr_type} - {args.year}-page-{args.page.zfill(4)}")
                 print(f"Expected file: ocr-no-ad/{args.year}-page-{args.page.zfill(4)}-{ocr_type}.txt")
@@ -224,13 +228,11 @@ def main():
     if results:
         print(f"\nOCR Comparison Results")
         print(f"Type: {args.type.upper()} | Year: {args.year} | Page: {args.page.zfill(4)}")
-        print("=" * 80)
-        print(f"{'Type':<10} {'Source':<25} {'WER':<10} {'CER':<10}")
-        print("-" * 55)
-        
+        print("=" * 90)
+        print(f"{'Type':<10} {'Source':<25} {'WER':<10} {'CER':<10} {'Items':<10}")
+        print("-" * 70)
         for result in results:
-            print(f"{result['type']:<10} {result['source']:<25} {result['wer']:<10.4f} {result['cer']:<10.4f}")
-        
+            print(f"{result['type']:<10} {result['source']:<25} {result['wer']:<10.4f} {result['cer']:<10.4f} {str(result.get('items','')):<10}")
         print(f"\nDetailed comparison results saved in: {args.output_dir}/")
     else:
         print("No results to display.")
