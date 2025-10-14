@@ -183,8 +183,8 @@ def main():
                     n_items = count_llm_items_from_file(ocr_source, model, args.year, args.page)
                     # Store results
                     results.append({
-                        'type': 'LLM',
-                        'source': f"{ocr_source}/{model}",
+                        'llm': model,
+                        'ocr_source': ocr_source,
                         'wer': metrics['wer'],
                         'cer': metrics['cer'],
                         'items': n_items
@@ -211,11 +211,11 @@ def main():
                 metrics = calculate_metrics(reference, hypothesis, tr_word, tr_char)
                 # Store results (no item count for raw)
                 results.append({
-                    'type': 'Raw OCR',
-                    'source': ocr_type,
+                    'llm': 'N/A',
+                    'ocr_source': ocr_type,
                     'wer': metrics['wer'],
                     'cer': metrics['cer'],
-                    'items': ''
+                    'items': 'N/A'
                 })
                 # Save detailed results to file
                 save_comparison_results('raw', ocr_type, args.year, args.page, metrics, args.output_dir)
@@ -227,12 +227,13 @@ def main():
     # Display results in table format
     if results:
         print(f"\nOCR Comparison Results")
-        print(f"Type: {args.type.upper()} | Year: {args.year} | Page: {args.page.zfill(4)}")
-        print("=" * 90)
-        print(f"{'Type':<10} {'Source':<25} {'WER':<10} {'CER':<10} {'Items':<10}")
-        print("-" * 70)
+        print(f"Year: {args.year} | Page: {args.page.zfill(4)}")
+        print("=" * 80)
+        print(f"{'LLM':<20} {'OCR-Source':<15} {'WER':<10} {'CER':<10} {'#Entries':<10}")
+        print("-" * 80)
         for result in results:
-            print(f"{result['type']:<10} {result['source']:<25} {result['wer']:<10.4f} {result['cer']:<10.4f} {str(result.get('items','')):<10}")
+            items_str = str(result['items']) if result['items'] != 'N/A' else 'N/A'
+            print(f"{result['llm']:<20} {result['ocr_source']:<15} {result['wer']:<10.4f} {result['cer']:<10.4f} {items_str:<10}")
         print(f"\nDetailed comparison results saved in: {args.output_dir}/")
     else:
         print("No results to display.")
