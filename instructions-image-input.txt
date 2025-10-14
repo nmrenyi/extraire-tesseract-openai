@@ -1,0 +1,54 @@
+Vous analysez directement une image d'annuaire médical français du 19e et du 20e siècle.
+L'entrée est une IMAGE d'UNE page complète d'annuaire médical historique.
+
+IMPORTANT:
+- L'image peut contenir des publicités, des textes d'éditeur, ou du texte non-médical en haut ou en bas.
+- Ignorez-les complètement. Extrayez SEULEMENT les entrées de médecins.
+- Lisez attentivement tous les textes visibles dans l'image, même s'ils sont partiellement effacés ou difficiles à lire.
+- Si l'image ne contient AUCUNE entrée de médecin (seulement des publicités ou du texte non-médical), retournez une ligne vide dans le TSV.
+
+Chaque entrée de médecin contient généralement :
+- nom de famille (parfois avec préfixe ou parenthèses),
+- année (diplôme ou année de référence),
+- notes optionnelles (ex: "Ex-Int. des Hôp.", "AGR.", "M. A. M.", "CH. H.", "M. H."),
+- adresse (rue, boulevard, avenue, etc.),
+- horaires d'ouverture (abrégés: Lun., Mar., Mer., Jeu., Ven., Sam., Dim., "midi à 2", "2 à 4", etc.).
+
+### TÂCHE
+Analysez l'image et produisez un fichier TSV (Tab-Separated Values), où chaque ligne correspond à UNE entrée de médecin, avec ces colonnes séparées par des tabulations :
+
+nom	année	notes	adresse	horaires
+
+### DESCRIPTION DES COLONNES
+- nom: Nom de famille du médecin (lisez l'orthographe exacte de l'image)
+- année: Année de diplôme ou de référence (lisez exactement, ex: "1881" ou "1870")
+- notes: Titres/affiliations hospitalières (ex: "Ex-Int. des Hôp.", "AGR.", "M. A. M.", "CH. H.")
+- adresse: Adresse de rue complète (conservez accents/abréviations visibles)
+- horaires: Informations horaires (ex: "Lun. Mer. Ven. 3 à 5")
+
+### RÈGLES DE LECTURE D'IMAGE
+- Lisez l'orthographe EXACTE visible dans l'image, accents, symboles (✶, AGR., etc.).
+- Si un champ n'est pas visible ou illisible, laissez-le vide.
+- N'inventez pas d'informations non visibles dans l'image.
+- Ne manquez AUCUN médecin : parcourez systématiquement toute l'image pour extraire toutes les entrées présentes.
+- ORDRE DE LECTURE CRITIQUE : L'image contient généralement DEUX COLONNES d'entrées de médecins. Respectez l'ordre de lecture suivant :
+  1. Lisez la colonne de GAUCHE de haut en bas COMPLÈTEMENT
+  2. Puis lisez la colonne de DROITE de haut en bas COMPLÈTEMENT
+  3. NE MÉLANGEZ PAS les colonnes - terminez entièrement la gauche avant la droite
+  4. Cet ordre est ESSENTIEL pour l'évaluation ultérieure
+- Ne produisez que les entrées de médecins (ignorez publicités, textes d'éditeur).
+- Incluez toujours les titres de civilité (Mme, Mlle, etc.) dans le champ nom s'ils sont visibles.
+- Si aucune entrée de médecin n'est trouvée dans l'image, retournez seulement l'en-tête TSV.
+- Séparez les colonnes par des TABULATIONS (	), pas des virgules.
+- Aucun échappement nécessaire pour les virgules dans le texte.
+- NE PAS entourer la sortie avec des balises markdown ou des blocs de code.
+- Retournez UNIQUEMENT le contenu TSV brut, sans formatage markdown.
+
+### CONSEILS POUR LA LECTURE D'IMAGE
+- Examinez attentivement les zones de texte dense qui contiennent les listes de médecins.
+- Les entrées de médecins sont généralement organisées en DEUX COLONNES distinctes sur la page.
+- IMPORTANT : Suivez l'ordre de lecture colonne par colonne (gauche complète, puis droite complète).
+- Faites attention aux abréviations typiques de l'époque (boul. pour boulevard, etc.).
+- Les horaires peuvent être sur la même ligne ou sur la ligne suivante.
+- Certains textes peuvent être en caractères plus petits ou partiellement effacés.
+- Identifiez visuellement la séparation entre les deux colonnes pour éviter de mélanger l'ordre.
