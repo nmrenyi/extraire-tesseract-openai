@@ -12,7 +12,8 @@ def load_tsv(path: str) -> str:
 def main() -> None:
     # Absolute paths requested by the user
     ref_path = Path("/Users/renyi/Downloads/rosenwald/extraire-tesseract-openai/golden-truth/1887-page-0032.tsv")
-    hyp_path = Path("/Users/renyi/Downloads/rosenwald/extraire-tesseract-openai/golden-truth/ella-1887-32.tsv")
+    # hyp_path = Path("/Users/renyi/Downloads/rosenwald/extraire-tesseract-openai/golden-truth/ella-1887-32.tsv")
+    hyp_path = Path("/Users/renyi/Downloads/rosenwald/extraire-tesseract-openai/golden-truth/colab-1887-32.tsv")
 
     reference = load_tsv(ref_path)
     hypothesis = load_tsv(hyp_path)
