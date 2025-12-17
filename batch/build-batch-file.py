@@ -21,9 +21,8 @@ OCR_ROOT = ROOT / "rosenwald-original-ocr"
 INSTR_RAW = ROOT / "instructions-raw.txt"
 INSTR_EXAMPLE = ROOT / "instructions-example-output.tsv"
 
-# Capture year, page, and final side indicator (-1 or -2) before .json
-# Example: claude-sonnet-4-5__vs__qwen3-vl-235b-a22b-thinking-1887-0029-...-1.json
-pattern = re.compile(r"(?P<year>\d{4})-(?P<page>\d{4}).*-(?P<side>[12])\.json")
+# Extractor: last occurrence of 18xx/19xx followed by 4-digit page
+YEAR_PAGE_RE = re.compile(r"(18|19)\d{2}-(\d{4})")
 
 def load_instructions() -> str:
     """Combine raw instructions and example output into one prompt string."""
@@ -59,16 +58,27 @@ def main() -> None:
 
     pairs = set()
     for line in LOG_PATH.read_text().splitlines():
-        match = pattern.search(line)
-        if match:
-            pairs.add((match.group("year"), match.group("page"), match.group("side")))
+        line = line.strip()
+        if not line:
+            continue
 
-    sorted_pairs = sorted(pairs, key=lambda t: (int(t[0]), int(t[1]), int(t[2])))
+        # Find the last year-page occurrence in the line
+        year_page_matches = list(YEAR_PAGE_RE.finditer(line))
+        if not year_page_matches:
+            continue
+        year_match = year_page_matches[-1]
+        year = year_match.group(0).split("-")[0]
+        page = year_match.group(0).split("-")[1]
+
+        pairs.add((year, page))
+
+    # Deduplicate year-page pairs and sort
+    sorted_pairs = sorted(pairs, key=lambda t: (int(t[0]), int(t[1])))
 
     requests = []
     missing = []
 
-    for year, page, side in sorted_pairs:
+    for year, page in sorted_pairs:
         ocr_path = OCR_ROOT / year / f"{year}-page-{page}.txt"
         if not ocr_path.exists():
             missing.append(ocr_path)
@@ -77,7 +87,7 @@ def main() -> None:
         ocr_text = ocr_path.read_text(encoding="utf-8").strip()
 
         requests.append({
-            "custom_id": f"{year}-{page}-{side}",
+            "custom_id": f"{year}-{page}",
             "method": "POST",
             "url": "/v1/responses",
             "body": {
