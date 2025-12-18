@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Compare two golden-truth TSV files using jiwer metrics (WER/CER) and alignments."""
-import jiwer
+import argparse
 from pathlib import Path
+
+import jiwer
 
 
 def load_tsv(path: str) -> str:
@@ -10,10 +12,20 @@ def load_tsv(path: str) -> str:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Compare two TSV files using jiwer metrics.")
+    parser.add_argument(
+        "--hyp",
+        dest="hyp_path",
+        type=Path,
+        default=Path("/Users/renyi/Downloads/rosenwald/extraire-tesseract-openai/golden-truth/colab-1887-32.tsv"),
+        help="Hypothesis TSV path (default: current hardcoded value)",
+    )
+
+    args = parser.parse_args()
+
     # Absolute paths requested by the user
     ref_path = Path("/Users/renyi/Downloads/rosenwald/extraire-tesseract-openai/golden-truth/1887-page-0032.tsv")
-    # hyp_path = Path("/Users/renyi/Downloads/rosenwald/extraire-tesseract-openai/golden-truth/ella-1887-32.tsv")
-    hyp_path = Path("/Users/renyi/Downloads/rosenwald/extraire-tesseract-openai/golden-truth/colab-1887-32.tsv")
+    hyp_path = args.hyp_path
 
     reference = load_tsv(ref_path)
     hypothesis = load_tsv(hyp_path)
