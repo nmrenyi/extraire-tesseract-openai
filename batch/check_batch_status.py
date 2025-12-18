@@ -60,7 +60,14 @@ def parse_args() -> argparse.Namespace:
     grp.add_argument("--batch-id", help="Batch ID (e.g., batch_abc123)")
     grp.add_argument(
         "--model",
-        help="Model name to infer batch JSON at batch/original-ocr-requests-<model>.jsonl.batch.json",
+        default="gpt-5-mini-2025-08-07",
+        help="Model name to infer batch JSON at batch/<ocr-source>-requests-<model>.jsonl.batch.json",
+    )
+    parser.add_argument(
+        "--ocr-source",
+        choices=["original", "tesseract"],
+        default="original",
+        help="Which OCR source was used to build the requests (default: original)",
     )
     parser.add_argument(
         "--errors-out",
@@ -77,7 +84,7 @@ def main() -> None:
 
     # If model is provided, infer batch JSON path and read batch id from it (unless overridden).
     if args.model:
-        batch_json_path = Path(__file__).resolve().parent / f"original-ocr-requests-{args.model}.jsonl.batch.json"
+        batch_json_path = Path(__file__).resolve().parent / f"{args.ocr_source}-requests-{args.model}.jsonl.batch.json"
         if not batch_json_path.exists():
             raise SystemExit(f"Batch JSON not found for model {args.model}: {batch_json_path}")
 
