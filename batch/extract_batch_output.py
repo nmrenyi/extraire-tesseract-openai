@@ -88,7 +88,7 @@ def main() -> None:
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=Path("batch/raw-output-tsv"),
+        default=Path("raw-output-tsv"),
         help="Base directory to write TSV files (default: batch/raw-output-tsv)",
     )
     args = parser.parse_args()
