@@ -8,15 +8,15 @@ from pathlib import Path
 from openai import OpenAI
 
 
-def save_error_file(client: OpenAI, file_id: str, batch_id: str, out_path: Path | None) -> Path:
-    target = out_path or (Path(__file__).resolve().parent / f"errors-{batch_id}.jsonl")
+def save_error_file(client: OpenAI, file_id: str, target: Path) -> Path:
+    target.parent.mkdir(parents=True, exist_ok=True)
     content = client.files.content(file_id)
     target.write_bytes(content.read())
     return target
 
 
-def save_output_file(client: OpenAI, file_id: str, batch_id: str, out_path: Path | None) -> Path:
-    target = out_path or (Path(__file__).resolve().parent / f"output-{batch_id}.jsonl")
+def save_output_file(client: OpenAI, file_id: str, target: Path) -> Path:
+    target.parent.mkdir(parents=True, exist_ok=True)
     content = client.files.content(file_id)
     target.write_bytes(content.read())
     return target
@@ -78,11 +78,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--errors-out",
-        help="Optional path to save the error JSONL (default: batch/errors-<batch_id>.jsonl)",
+        help="Optional path to save the error JSONL (default: batch/raw-batch-output/<basename>.errors.jsonl or batch/raw-batch-output/errors-<batch_id>.jsonl)",
     )
     parser.add_argument(
         "--output-out",
-        help="Optional path to save the completed output JSONL (default: batch/output-<batch_id>.jsonl)",
+        help="Optional path to save the completed output JSONL (default: batch/raw-batch-output/<basename>.output.jsonl or batch/raw-batch-output/output-<batch_id>.jsonl)",
     )
     return parser.parse_args()
 
@@ -92,6 +92,7 @@ def main() -> None:
     client = OpenAI()
 
     batch_id = args.batch_id
+    base_name = None
 
     # If model is provided, infer batch JSON path and read batch id from it (unless overridden).
     if args.model:
@@ -103,6 +104,8 @@ def main() -> None:
         batch_id = data.get("id") or data.get("batch_id") or data.get("batchId")
         if not batch_id:
             raise SystemExit(f"Could not find batch id in {batch_json_path}")
+
+        base_name = f"{args.ocr_source}-requests-{args.model}"
 
     batch = client.batches.retrieve(batch_id)
 
@@ -156,11 +159,16 @@ def main() -> None:
     output_file_id = getattr(batch, "output_file_id", None)
 
     if output_file_id:
+        default_output = None
+        if base_name:
+            default_output = Path(__file__).resolve().parent / "raw-batch-output" / f"{base_name}.output.jsonl"
+        else:
+            default_output = Path(__file__).resolve().parent / "raw-batch-output" / f"output-{batch_id}.jsonl"
+
         output_path = save_output_file(
             client,
             output_file_id,
-            batch_id,
-            Path(args.output_out) if args.output_out else None,
+            Path(args.output_out) if args.output_out else default_output,
         )
         print(f"\nDownloaded output file to: {output_path}")
 
@@ -168,11 +176,16 @@ def main() -> None:
         print("\nNo error file available yet (batch may still be running or no failures).")
         return
 
+    default_errors = None
+    if base_name:
+        default_errors = Path(__file__).resolve().parent / "raw-batch-output" / f"{base_name}.errors.jsonl"
+    else:
+        default_errors = Path(__file__).resolve().parent / "raw-batch-output" / f"errors-{batch_id}.jsonl"
+
     error_path = save_error_file(
         client,
         error_file_id,
-        batch_id,
-        Path(args.errors_out) if args.errors_out else None,
+        Path(args.errors_out) if args.errors_out else default_errors,
     )
     print(f"\nDownloaded error file to: {error_path}")
     summarize_errors(error_path)
