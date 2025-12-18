@@ -1,28 +1,27 @@
 #!/usr/bin/env python3
-"""Build batch requests for original OCR pages listed in target-files.log.
+"""Build batch requests directly from a benchmark TSV file.
 
-For each year-page found in batch/target-files.log, this script:
-- Locates the matching original OCR txt file under rosenwald-original-ocr/{year}/
+For each row in the selected benchmark TSV (original or tesseract), this script:
+- Reads the OCR `text` column directly from the TSV
 - Combines instructions-raw.txt and instructions-example-output.tsv into a single
-    instruction string (same as llm-correction.py)
-- Emits one batch-style request JSON line per file with custom_id "{year}-{page}-{side}"
+  instruction string (same as llm-correction.py)
+- Emits one batch-style request JSON line per file with custom_id "{year}-{page}"
 
-Output: batch/original-ocr-requests-<model>.jsonl
+Output: batch/<source>-requests-<model>.jsonl
 """
 
 import argparse
+import csv
 import json
-import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-LOG_PATH = ROOT / "batch" / "target-files.log"
-OCR_ROOT = ROOT / "rosenwald-original-ocr"
 INSTR_RAW = ROOT / "instructions-raw.txt"
 INSTR_EXAMPLE = ROOT / "instructions-example-output.tsv"
-
-# Extractor: last occurrence of 18xx/19xx followed by 4-digit page
-YEAR_PAGE_RE = re.compile(r"(18|19)\d{2}-(\d{4})")
+TSV_PATHS = {
+    "original": ROOT / "batch" / "rosenwald-benchmark-original.tsv",
+    "tesseract": ROOT / "batch" / "rosenwald-benchmark-tesseract.tsv",
+}
 
 def load_instructions() -> str:
     """Combine raw instructions and example output into one prompt string."""
@@ -37,7 +36,13 @@ def load_instructions() -> str:
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Build batch JSONL requests from target-files.log")
+    parser = argparse.ArgumentParser(description="Build batch JSONL requests from a benchmark TSV")
+    parser.add_argument(
+        "--source",
+        choices=sorted(TSV_PATHS.keys()),
+        default="original",
+        help="Which benchmark TSV to read (default: original)",
+    )
     parser.add_argument(
         "--model",
         default="gpt-5-mini-2025-08-07",
@@ -49,53 +54,44 @@ def parse_args():
 def main() -> None:
     args = parse_args()
 
-    if not LOG_PATH.exists():
-        raise SystemExit(f"Missing log file: {LOG_PATH}")
+    tsv_path = TSV_PATHS[args.source]
+    if not tsv_path.exists():
+        raise SystemExit(f"Missing benchmark TSV: {tsv_path}")
 
     instructions = load_instructions()
 
-    output_path = ROOT / "batch" / f"original-ocr-requests-{args.model}.jsonl"
-
-    pairs = set()
-    for line in LOG_PATH.read_text().splitlines():
-        line = line.strip()
-        if not line:
-            continue
-
-        # Find the last year-page occurrence in the line
-        year_page_matches = list(YEAR_PAGE_RE.finditer(line))
-        if not year_page_matches:
-            continue
-        year_match = year_page_matches[-1]
-        year = year_match.group(0).split("-")[0]
-        page = year_match.group(0).split("-")[1]
-
-        pairs.add((year, page))
-
-    # Deduplicate year-page pairs and sort
-    sorted_pairs = sorted(pairs, key=lambda t: (int(t[0]), int(t[1])))
+    output_path = ROOT / "batch" / f"{args.source}-requests-{args.model}.jsonl"
 
     requests = []
-    missing = []
 
-    for year, page in sorted_pairs:
-        ocr_path = OCR_ROOT / year / f"{year}-page-{page}.txt"
-        if not ocr_path.exists():
-            missing.append(ocr_path)
-            continue
+    with tsv_path.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f, delimiter="\t")
+        for row in reader:
+            year = row.get("year", "").strip()
+            page = row.get("page", "").strip()
+            text = row.get("text", "")
 
-        ocr_text = ocr_path.read_text(encoding="utf-8").strip()
+            if not year or not page or text is None:
+                continue
 
-        requests.append({
-            "custom_id": f"{year}-{page}",
-            "method": "POST",
-            "url": "/v1/responses",
-            "body": {
-                "model": args.model,
-                "instructions": instructions,
-                "input": ocr_text,
-            },
-        })
+            # Convert literal "\n" sequences to real newlines to avoid double escaping in JSONL
+            # Restore escaped control sequences for the model to see structure.
+            normalized_text = (
+                text
+                .replace(r"\n", "\n")
+                .replace(r"\t", "\t")     # only needed if you escaped tabs when writing
+            )
+
+            requests.append({
+                "custom_id": f"{year}-{page}",
+                "method": "POST",
+                "url": "/v1/responses",
+                "body": {
+                    "model": args.model,
+                    "instructions": instructions,
+                    "input": normalized_text,
+                },
+            })
 
     with output_path.open("w", encoding="utf-8") as f:
         for req in requests:
@@ -103,10 +99,6 @@ def main() -> None:
             f.write("\n")
 
     print(f"Wrote {len(requests)} requests to {output_path}")
-    if missing:
-        print(f"Missing {len(missing)} OCR files:")
-        for path in missing:
-            print(f"  {path}")
 
 
 if __name__ == "__main__":
