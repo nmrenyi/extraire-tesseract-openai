@@ -15,6 +15,13 @@ def save_error_file(client: OpenAI, file_id: str, batch_id: str, out_path: Path 
     return target
 
 
+def save_output_file(client: OpenAI, file_id: str, batch_id: str, out_path: Path | None) -> Path:
+    target = out_path or (Path(__file__).resolve().parent / f"output-{batch_id}.jsonl")
+    content = client.files.content(file_id)
+    target.write_bytes(content.read())
+    return target
+
+
 def summarize_errors(error_path: Path) -> None:
     print("\nFailed Requests")
     print("---------------")
@@ -72,6 +79,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--errors-out",
         help="Optional path to save the error JSONL (default: batch/errors-<batch_id>.jsonl)",
+    )
+    parser.add_argument(
+        "--output-out",
+        help="Optional path to save the completed output JSONL (default: batch/output-<batch_id>.jsonl)",
     )
     return parser.parse_args()
 
@@ -142,6 +153,17 @@ def main() -> None:
 
     # Always download and summarize errors if available
     error_file_id = getattr(batch, "error_file_id", None)
+    output_file_id = getattr(batch, "output_file_id", None)
+
+    if output_file_id:
+        output_path = save_output_file(
+            client,
+            output_file_id,
+            batch_id,
+            Path(args.output_out) if args.output_out else None,
+        )
+        print(f"\nDownloaded output file to: {output_path}")
+
     if not error_file_id:
         print("\nNo error file available yet (batch may still be running or no failures).")
         return
