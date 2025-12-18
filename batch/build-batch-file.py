@@ -48,6 +48,12 @@ def parse_args():
         default="gpt-5-mini-2025-08-07",
         help="Model name to include in each request and output filename (default: gpt-5-mini-2025-08-07)",
     )
+    parser.add_argument(
+        "--reasoning-effort",
+        choices=["medium", "high"],
+        default="high",
+        help="Reasoning effort hint passed to the model (default: high)",
+    )
     return parser.parse_args()
 
 
@@ -88,6 +94,7 @@ def main() -> None:
                 "url": "/v1/responses",
                 "body": {
                     "model": args.model,
+                    "reasoning": {"effort": args.reasoning_effort},
                     "instructions": instructions,
                     "input": normalized_text,
                 },
