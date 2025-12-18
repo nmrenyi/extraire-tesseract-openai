@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from google import genai
@@ -24,9 +25,10 @@ def fmt_ts(ts) -> str:
 
 
 def save_bytes(client: genai.Client, file_name: str, target: Path) -> Path:
+    """Download a Gemini file by name and persist it locally."""
     target.parent.mkdir(parents=True, exist_ok=True)
-    with client.files.download(file_name) as fsrc:
-        target.write_bytes(fsrc.read())
+    data = client.files.download(file=file_name)
+    target.write_bytes(data)
     return target
 
 
@@ -75,6 +77,17 @@ def parse_args() -> argparse.Namespace:
         "--output-out",
         help="Optional path to save the output JSONL (default: batch-gemini-image/raw-batch-output/<basename>.output.jsonl or output-<batch_name>.jsonl)",
     )
+    parser.add_argument(
+        "--wait",
+        action="store_true",
+        help="Poll until the batch reaches a terminal state, then download outputs/errors",
+    )
+    parser.add_argument(
+        "--interval",
+        type=int,
+        default=15,
+        help="Polling interval in seconds when --wait is enabled (default: 15)",
+    )
     return parser.parse_args()
 
 
@@ -97,13 +110,24 @@ def main() -> None:
 
         base_name = f"image-requests-{args.model}"
 
-    batch = client.batches.get(name=batch_name)
+    def fetch():
+        return client.batches.get(name=batch_name)
+
+    batch = fetch()
+
+    if args.wait and batch.state and batch.state.name not in TERMINAL_STATES:
+        print(f"Waiting for terminal state (currently {batch.state.name}) ...")
+        while batch.state and batch.state.name not in TERMINAL_STATES:
+            time.sleep(max(1, args.interval))
+            batch = fetch()
+        print(f"Reached terminal state: {batch.state.name if batch.state else '-'}")
 
     print("Batch Status")
     print("============")
     print(f"name:              {batch.name}")
     print(f"state:             {batch.state.name if batch.state else '-'}")
     print(f"output_file:       {getattr(batch, 'output_file', None) or '-'}")
+    print(f"dest.file_name:    {getattr(getattr(batch, 'dest', None), 'file_name', None) or '-'}")
     print(f"error_file:        {getattr(batch, 'error_file', None) or '-'}")
     print(f"display_name:      {getattr(batch, 'display_name', None) or '-'}")
 
@@ -122,7 +146,8 @@ def main() -> None:
         print(f"error:     {getattr(stats, 'error_count', '-')}")
 
     error_file = getattr(batch, "error_file", None)
-    output_file = getattr(batch, "output_file", None)
+    dest_file = getattr(getattr(batch, "dest", None), "file_name", None)
+    output_file = getattr(batch, "output_file", None) or dest_file
 
     if output_file:
         default_output = None
@@ -138,9 +163,17 @@ def main() -> None:
             Path(args.output_out) if args.output_out else default_output,
         )
         print(f"\nDownloaded output file to: {output_path}")
+    else:
+        if batch.state and batch.state.name not in TERMINAL_STATES:
+            print("\nNo output file yet (batch still running).")
+        else:
+            print("\nNo output file reported by API.")
 
     if not error_file:
-        print("\nNo error file available yet (batch may still be running or no failures).")
+        if batch.state and batch.state.name not in TERMINAL_STATES:
+            print("\nNo error file yet (batch still running).")
+        else:
+            print("\nNo error file (no failures or not provided by API).")
         return
 
     default_errors = None
