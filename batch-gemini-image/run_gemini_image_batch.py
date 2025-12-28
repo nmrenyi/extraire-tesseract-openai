@@ -12,6 +12,11 @@ Example:
     --model gemini-3-flash-preview \
     --display-name rosenwald-image-flash
 
+  python batch-gemini-image/run_gemini_image_batch.py \
+    --file batch-gemini-image/image-requests-gemini-3-pro-preview.jsonl \
+    --model gemini-3-pro-preview \
+    --display-name rosenwald-image-pro
+
 Requires GOOGLE_API_KEY in the environment.
 """
 
