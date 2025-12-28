@@ -137,7 +137,6 @@ def main() -> None:
                         ]
                     }
                 ],
-                "generationConfig": {"temperature": 0.0},
             }
 
             requests.append({"key": custom_id, "request": request})
