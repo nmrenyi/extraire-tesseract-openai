@@ -13,6 +13,7 @@ Example:
 import argparse
 import csv
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Dict, Iterable, List
 
@@ -57,7 +58,14 @@ def read_targets(tsv_path: Path, years_filter: Iterable[str]) -> List[Dict[str, 
     return rows
 
 
-def render_year(pdf_path: Path, pages: Iterable[int], output_dir: Path, dpi: int, dry_run: bool) -> Dict[str, int]:
+def render_year(
+    pdf_path: Path,
+    pages: Iterable[int],
+    output_dir: Path,
+    dpi: int,
+    dry_run: bool,
+    workers: int,
+) -> Dict[str, int]:
     """Render selected pages for one PDF, returning counts."""
     if not pdf_path.exists():
         print(f"skip missing PDF: {pdf_path}")
@@ -74,18 +82,37 @@ def render_year(pdf_path: Path, pages: Iterable[int], output_dir: Path, dpi: int
             print(f"skip {pdf_path.name}: pages beyond PDF length {page_count}: {too_high}")
             page_list = [p for p in page_list if p <= page_count]
 
+    if dry_run:
+        for page in page_list:
+            print(f"DRY-RUN would render {pdf_path.name} page {page} -> {output_dir}")
+        return {"rendered": len(page_list), "failed": 0}
+
     rendered = 0
     failed = 0
-    for page in page_list:
-        if dry_run:
-            print(f"DRY-RUN would render {pdf_path.name} page {page} -> {output_dir}")
-            rendered += 1
-            continue
-        ok = convert_single_page_to_png(str(pdf_path), page, str(output_dir), dpi)
-        if ok:
-            rendered += 1
-        else:
-            failed += 1
+
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+        future_map = {
+            pool.submit(
+                convert_single_page_to_png,
+                str(pdf_path),
+                page,
+                str(output_dir),
+                dpi,
+            ): page
+            for page in page_list
+        }
+        for future in as_completed(future_map):
+            page = future_map[future]
+            try:
+                ok = future.result()
+                if ok:
+                    rendered += 1
+                else:
+                    failed += 1
+            except Exception as exc:  # pragma: no cover
+                print(f"error rendering {pdf_path.name} page {page}: {exc}")
+                failed += 1
+
     return {"rendered": rendered, "failed": failed}
 
 
@@ -97,6 +124,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--years", nargs="*", help="Optional subset of years to process (e.g., 1887 1888)")
     parser.add_argument("--dpi", type=int, default=300, help="Output DPI (default: 300)")
     parser.add_argument("--dry-run", action="store_true", help="List work without rendering")
+    parser.add_argument("--workers", type=int, default=8, help="Parallel workers for page rendering (default: 8)")
     return parser.parse_args()
 
 
@@ -117,7 +145,7 @@ def main() -> None:
         year = entry["year"]
         pages = range(entry["start"], entry["end"] + 1)
         pdf_path = args.pdfs_dir / f"{year}.pdf"
-        summary = render_year(pdf_path, pages, args.output_dir, args.dpi, args.dry_run)
+        summary = render_year(pdf_path, pages, args.output_dir, args.dpi, args.dry_run, args.workers)
         total_rendered += summary["rendered"]
         total_failed += summary["failed"]
 
