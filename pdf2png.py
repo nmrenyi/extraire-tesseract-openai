@@ -69,8 +69,8 @@ def convert_single_page_to_png(pdf_path, page_num, output_dir, dpi=300):
     print(f"\nConverting page {page_num} from {pdf_path}...")
     print(f"Output: {target_output_file}")
     
-    # Use -singlefile to avoid pdftoppm's automatic numbering
-    temp_prefix = year_dir / f"{year}-page-temp"
+    # Use -singlefile with a unique temp prefix per page to avoid collisions under concurrency
+    temp_prefix = year_dir / f"{year}-page-temp-{page_num:04d}-{os.getpid()}"
     cmd = [
         "pdftoppm",
         "-png",
