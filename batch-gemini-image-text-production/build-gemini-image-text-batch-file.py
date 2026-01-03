@@ -20,11 +20,10 @@ ROOT = Path(__file__).resolve().parents[1]
 INSTR_RAW = ROOT / "instructions-image-input.txt"
 INSTR_EXAMPLE = ROOT / "instructions-example-output.tsv"
 TSV_PATHS = {
-    "original": ROOT / "batch-gemini-image" / "rosenwald-benchmark-original.tsv",
-    "tesseract": ROOT / "batch-gemini-image" / "rosenwald-benchmark-tesseract.tsv",
+    "original": ROOT / "batch-gemini-image-text-production" / "rosenwald-benchmark-original.tsv",
 }
-DEFAULT_MAPPING = ROOT / "batch-gemini-image" / "uploaded-image-ids.jsonl"
-DEFAULT_MODEL = "gemini-3-flash-preview"
+DEFAULT_MAPPING = ROOT / "batch-gemini-image-text-production" / "uploaded-image-ids.jsonl"
+DEFAULT_MODEL = "gemini-3-pro-preview"
 
 
 def load_instructions() -> str:
