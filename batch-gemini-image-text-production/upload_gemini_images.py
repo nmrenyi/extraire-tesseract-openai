@@ -11,6 +11,7 @@ import argparse
 import csv
 import json
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Dict, Optional
@@ -78,11 +79,28 @@ def count_rows(tsv_path: Path) -> int:
     return total
 
 
-def print_progress(done: int, total: int) -> None:
+def format_duration(seconds: float) -> str:
+    minutes, seconds = divmod(int(seconds), 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours:d}:{minutes:02d}:{seconds:02d}"
+    return f"{minutes:02d}:{seconds:02d}"
+
+
+def print_progress(done: int, total: int, start_time: float) -> None:
     if total <= 0:
         return
     pct = (done / total) * 100
-    print(f"\rprogress: {done}/{total} ({pct:5.1f}%)", end="", flush=True)
+    elapsed = time.perf_counter() - start_time
+    rate = (done / elapsed) if elapsed > 0 else 0
+    remaining = ((total - done) / rate) if rate > 0 else 0
+    elapsed_str = format_duration(elapsed)
+    eta_str = format_duration(remaining) if rate > 0 else "--:--"
+    print(
+        f"\rprogress: {done}/{total} ({pct:5.1f}%) elapsed {elapsed_str} eta {eta_str}",
+        end="",
+        flush=True,
+    )
 
 
 def main() -> None:
@@ -143,8 +161,10 @@ def main() -> None:
 
         print(f"len(futures): {len(futures)}, uploaded: {uploaded}, skipped: {skipped}, processed: {processed}, tsv: {args.tsv}")
 
+        start_time = time.perf_counter()
         with ThreadPoolExecutor(max_workers=max(1, args.workers)) as pool:
             future_map = {pool.submit(upload_one, path, cid): (cid, path) for cid, path in futures}
+            completed = 0
             for future in as_completed(future_map):
                 cid, path = future_map[future]
                 try:
@@ -156,6 +176,14 @@ def main() -> None:
                 except Exception as exc:  # pragma: no cover
                     failed += 1
                     print(f"upload failed for {cid} ({path}): {exc}")
+                finally:
+                    with lock:
+                        completed += 1
+                        if PROGRESS_EVERY and (
+                            completed % PROGRESS_EVERY == 0 or completed == len(futures)
+                        ):
+                            print_progress(completed, len(futures), start_time)
+        print()  # ensure the progress line ends with a newline
 
     print(f"uploaded: {uploaded}")
     print(f"skipped (resume): {skipped}")
