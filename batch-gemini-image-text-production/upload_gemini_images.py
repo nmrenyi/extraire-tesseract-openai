@@ -120,15 +120,10 @@ def main() -> None:
         futures = []
 
         for row in reader:
-            year = (row.get("year") or "").strip()
-            page = (row.get("page") or "").strip()
-            if not year or not page:
-                continue
+            year = row.get("year").strip()
+            page = row.get("page").strip()
+
             processed += 1
-
-            if processed % PROGRESS_EVERY == 0:
-                print_progress(processed, total_rows)
-
             custom_id = f"{year}-{page}"
 
             if args.resume and custom_id in existing:
@@ -141,13 +136,12 @@ def main() -> None:
                 continue
 
             if args.limit and uploaded + len(futures) >= args.limit:
+                print("Reached upload limit.")
                 break
 
             futures.append((custom_id, image_path))
 
-        if total_rows:
-            print_progress(processed, total_rows)
-            print()
+        print(f"len(futures): {len(futures)}, uploaded: {uploaded}, skipped: {skipped}, processed: {processed}, tsv: {args.tsv}")
 
         with ThreadPoolExecutor(max_workers=max(1, args.workers)) as pool:
             future_map = {pool.submit(upload_one, path, cid): (cid, path) for cid, path in futures}
