@@ -11,10 +11,12 @@ Outputs: batch-gemini-image-text/image-text-requests-<model>.jsonl by default.
 """
 
 import argparse
+import base64
 import csv
 import json
+import mimetypes
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 ROOT = Path(__file__).resolve().parents[1]
 INSTR_RAW = ROOT / "instructions-image-input.txt"
@@ -22,7 +24,7 @@ INSTR_EXAMPLE = ROOT / "instructions-example-output.tsv"
 TSV_PATHS = {
     "original": ROOT / "batch-gemini-image-text-production" / "rosenwald-benchmark-original.tsv",
 }
-DEFAULT_MAPPING = ROOT / "batch-gemini-image-text-production" / "uploaded-image-ids.jsonl"
+DEFAULT_IMAGES_ROOT = ROOT / "rosenwald-images"
 DEFAULT_MODEL = "gemini-3-pro-preview"
 
 
@@ -42,31 +44,18 @@ def load_instructions() -> str:
     )
 
 
-def load_mapping(path: Path) -> Dict[str, Dict[str, str]]:
-    mapping: Dict[str, Dict[str, str]] = {}
-    if not path.exists():
-        raise SystemExit(
-            f"Missing mapping file: {path}. Run batch-gemini-image/upload_gemini_images.py first."
-        )
+def find_image(images_root: Path, year: str, page: str) -> Optional[Path]:
+    stem = f"{year}-page-{page}"
+    for ext in (".png", ".jpg", ".jpeg"):
+        cand = images_root / year / f"{stem}{ext}"
+        if cand.exists():
+            return cand
+    return None
 
-    with path.open("r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            cid = obj.get("custom_id")
-            if not isinstance(cid, str):
-                continue
-            mapping[cid] = {
-                "file_name": obj.get("file_name"),
-                "uri": obj.get("uri"),
-                "mime_type": obj.get("mime_type"),
-            }
-    return mapping
+
+def infer_mime_type(path: Path) -> str:
+    guessed, _ = mimetypes.guess_type(path.name)
+    return guessed or "application/octet-stream"
 
 
 def parse_args() -> argparse.Namespace:
@@ -85,10 +74,10 @@ def parse_args() -> argparse.Namespace:
         help=f"Gemini model name for filename tagging (default: {DEFAULT_MODEL})",
     )
     parser.add_argument(
-        "--mapping",
+        "--images-root",
         type=Path,
-        default=DEFAULT_MAPPING,
-        help="JSONL produced by upload_gemini_images.py with custom_id/file info",
+        default=DEFAULT_IMAGES_ROOT,
+        help="Root folder containing rendered images (default: rosenwald-images)",
     )
     parser.add_argument(
         "--output",
@@ -107,7 +96,8 @@ def main() -> None:
     if not tsv_path.exists():
         raise SystemExit(f"Missing TSV: {tsv_path}")
 
-    mapping = load_mapping(args.mapping)
+    if not args.images_root.exists():
+        raise SystemExit(f"Images root not found: {args.images_root}")
     instructions = load_instructions()
 
     out_path = args.output or (
@@ -116,7 +106,7 @@ def main() -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     requests = []
-    missing_ids = []
+    missing_images = []
     missing_text = 0
 
     with tsv_path.open("r", encoding="utf-8", newline="") as f:
@@ -134,17 +124,13 @@ def main() -> None:
                 missing_text += 1
 
             custom_id = f"{year}-{page}"
-            info = mapping.get(custom_id)
-            if not info:
-                missing_ids.append(custom_id)
+            image_path = find_image(args.images_root, year, page)
+            if not image_path:
+                missing_images.append(custom_id)
                 continue
 
-            file_uri = info.get("uri") or info.get("file_name")
-            if not file_uri:
-                missing_ids.append(custom_id)
-                continue
-
-            mime_type = info.get("mime_type")
+            mime_type = infer_mime_type(image_path)
+            image_b64 = base64.b64encode(image_path.read_bytes()).decode("ascii")
             prompt = (
                 f"{instructions}\n\n"
                 f"### TEXTE OCR SUPPLÉMENTAIRE\n"
@@ -157,9 +143,9 @@ def main() -> None:
                         "parts": [
                             {"text": prompt},
                             {
-                                "file_data": {
-                                    "file_uri": file_uri,
-                                    **({"mime_type": mime_type} if mime_type else {}),
+                                "inline_data": {
+                                    "mime_type": mime_type,
+                                    "data": image_b64,
                                 }
                             },
                         ]
@@ -175,11 +161,11 @@ def main() -> None:
             f.write("\n")
 
     print(f"Wrote {len(requests)} requests to {out_path}")
-    if missing_ids:
-        print(f"Missing file references for {len(missing_ids)} entries (not written):")
-        for cid in missing_ids[:20]:
+    if missing_images:
+        print(f"Missing images for {len(missing_images)} entries (not written):")
+        for cid in missing_images[:20]:
             print(f"  {cid}")
-        if len(missing_ids) > 20:
+        if len(missing_images) > 20:
             print("  ... (truncated)")
     if missing_text:
         print(f"Entries missing OCR text: {missing_text}")
