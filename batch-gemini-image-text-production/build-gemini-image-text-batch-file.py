@@ -15,6 +15,7 @@ import base64
 import csv
 import json
 import mimetypes
+import time
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -58,6 +59,40 @@ def infer_mime_type(path: Path) -> str:
     return guessed or "application/octet-stream"
 
 
+def count_rows(tsv_path: Path) -> int:
+    total = 0
+    with tsv_path.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f, delimiter="\t")
+        for row in reader:
+            year = (row.get("year") or "").strip()
+            page = (row.get("page") or "").strip()
+            if year and page:
+                total += 1
+    return total
+
+
+def format_duration(seconds: float) -> str:
+    minutes, seconds = divmod(int(seconds), 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours:d}:{minutes:02d}:{seconds:02d}"
+    return f"{minutes:02d}:{seconds:02d}"
+
+
+def print_progress(done: int, total: int, start_time: float) -> None:
+    if total <= 0:
+        return
+    pct = (done / total) * 100
+    elapsed = time.perf_counter() - start_time
+    rate = (done / elapsed) if elapsed > 0 else 0
+    remaining = ((total - done) / rate) if rate > 0 else 0
+    print(
+        f"\rprogress: {done}/{total} ({pct:5.1f}%) elapsed {format_duration(elapsed)} eta {format_duration(remaining) if rate > 0 else '--:--'}",
+        end="",
+        flush=True,
+    )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Build Gemini multimodal (image + OCR text) batch JSONL requests"
@@ -80,6 +115,12 @@ def parse_args() -> argparse.Namespace:
         help="Root folder containing rendered images (default: rosenwald-images)",
     )
     parser.add_argument(
+        "--progress-every",
+        type=int,
+        default=25,
+        help="Print progress every N processed rows (default: 25)",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         help=(
@@ -100,6 +141,10 @@ def main() -> None:
         raise SystemExit(f"Images root not found: {args.images_root}")
     instructions = load_instructions()
 
+    total_rows = count_rows(tsv_path)
+    progress_every = max(1, args.progress_every)
+    start_time = time.perf_counter()
+
     out_path = args.output or (
         Path(__file__).resolve().parent / f"image-text-requests-{args.model}.jsonl"
     )
@@ -108,6 +153,7 @@ def main() -> None:
     requests = []
     missing_images = []
     missing_text = 0
+    processed = 0
 
     with tsv_path.open("r", encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f, delimiter="\t")
@@ -118,6 +164,8 @@ def main() -> None:
 
             if not year or not page:
                 continue
+
+            processed += 1
 
             normalized_text = (text or "").replace(r"\n", "\n").replace(r"\t", "\t")
             if not normalized_text.strip():
@@ -154,6 +202,12 @@ def main() -> None:
             }
 
             requests.append({"key": custom_id, "request": request})
+
+            if total_rows and (processed % progress_every == 0 or processed == total_rows):
+                print_progress(processed, total_rows, start_time)
+
+    if total_rows:
+        print()
 
     with out_path.open("w", encoding="utf-8") as f:
         for req in requests:
