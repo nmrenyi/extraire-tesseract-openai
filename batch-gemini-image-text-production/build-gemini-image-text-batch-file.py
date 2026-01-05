@@ -121,10 +121,10 @@ def parse_args() -> argparse.Namespace:
         help="Print progress every N processed rows (default: 25)",
     )
     parser.add_argument(
-        "--chunk-size",
+        "--chunk-max-bytes",
         type=int,
-        default=1000,
-        help="How many requests per output file (default: 1000)",
+        default=1_800_000_000,
+        help="Approximate max bytes per chunk file before rotating (default: 1.8GB)",
     )
     parser.add_argument(
         "--chunk-dir",
@@ -164,11 +164,12 @@ def main() -> None:
     chunk_dir = args.chunk_dir or (out_path.parent / f"{out_path.stem}-chunks")
     chunk_dir.mkdir(parents=True, exist_ok=True)
 
-    chunk_size = max(1, args.chunk_size)
+    chunk_max_bytes = max(1, args.chunk_max_bytes)
     buffer = []
     chunk_index = 1
     written_total = 0
     chunks_written = 0
+    current_bytes = 0
 
     missing_images = []
     missing_text = 0
@@ -220,17 +221,23 @@ def main() -> None:
                 ]
             }
 
-            buffer.append({"key": custom_id, "request": request})
-            if len(buffer) >= chunk_size:
+            line = json.dumps({"key": custom_id, "request": request}, ensure_ascii=False)
+            line_bytes = len(line.encode("utf-8")) + 1  # newline
+
+            buffer.append(line)
+            current_bytes += line_bytes
+
+            if current_bytes >= chunk_max_bytes:
                 chunk_path = chunk_dir / f"{out_path.stem}-part-{chunk_index:04d}.jsonl"
                 with chunk_path.open("w", encoding="utf-8") as f_out:
-                    for req in buffer:
-                        f_out.write(json.dumps(req, ensure_ascii=False))
+                    for ln in buffer:
+                        f_out.write(ln)
                         f_out.write("\n")
                 written_total += len(buffer)
                 chunks_written += 1
                 chunk_index += 1
                 buffer.clear()
+                current_bytes = 0
 
             if total_rows and (processed % progress_every == 0 or processed == total_rows):
                 print_progress(processed, total_rows, start_time)
@@ -241,8 +248,8 @@ def main() -> None:
     if buffer:
         chunk_path = chunk_dir / f"{out_path.stem}-part-{chunk_index:04d}.jsonl"
         with chunk_path.open("w", encoding="utf-8") as f_out:
-            for req in buffer:
-                f_out.write(json.dumps(req, ensure_ascii=False))
+            for ln in buffer:
+                f_out.write(ln)
                 f_out.write("\n")
         written_total += len(buffer)
         chunks_written += 1
