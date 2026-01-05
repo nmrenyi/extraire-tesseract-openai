@@ -1,34 +1,37 @@
 #!/usr/bin/env python3
-"""Upload a multimodal (image + OCR text) JSONL and launch a Gemini batch job.
+"""Upload a multimodal (image + OCR text) JSONL and launch Gemini batch job(s).
 
-Steps:
-1) Upload the JSONL file to Gemini Files API.
-2) Persist the returned file name to a sidecar file for reuse.
-3) Create a batch job pointing to that file.
+Quick usage
+-----------
+- Single file:
+        python run_gemini_image_text_batch.py --file path/to/requests.jsonl --model gemini-3-flash-preview
 
-Example:
-  python run_gemini_image_text_batch.py \
-    --file image-text-requests-gemini-3-flash-preview.jsonl \
-    --model gemini-3-flash-preview \
-    --display-name rosenwald-image-text-flash
-  python run_gemini_image_text_batch.py \
-    --file image-text-requests-gemini-3-pro-preview.jsonl \
-    --model gemini-3-pro-preview \
-    --display-name rosenwald-image-text-pro
+- Chunked directory:
+        python run_gemini_image_text_batch.py --chunks-dir path/to/chunks --model gemini-3-flash-preview
 
-Requires GOOGLE_API_KEY in the environment.
+Notes
+- Expects GOOGLE_API_KEY in the environment.
+- Each file is uploaded, then a batch is created; per-file sidecars: *.uploaded_name.txt, *.batch.json.
+- In chunk mode, display names get -chunk-XXXX suffix unless you provide --display-name.
 """
 
 import argparse
 import json
 from pathlib import Path
+from typing import Iterable, Optional
 from google import genai
 from google.genai import types
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Upload JSONL and launch Gemini multimodal batch job")
-    parser.add_argument("--file", required=True, help="Path to the JSONL batch request file")
+    grp = parser.add_mutually_exclusive_group(required=True)
+    grp.add_argument("--file", help="Path to a single JSONL batch request file")
+    grp.add_argument(
+        "--chunks-dir",
+        type=Path,
+        help="Directory containing multiple JSONL chunk files (e.g., chunked outputs)",
+    )
     parser.add_argument(
         "--model",
         default="gemini-3-flash-preview",
@@ -36,20 +39,26 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--display-name",
-        help="Optional display name for the batch job (defaults to base filename)",
+        help="Optional display name for the batch job (defaults to base filename; in chunk mode, "
+             "each chunk gets a suffix)",
     )
     parser.add_argument(
         "--file-name-out",
-        help="Where to store the uploaded file name (default: <file>.uploaded_name.txt)",
+        help="Where to store the uploaded file name (default: <file>.uploaded_name.txt). Only used in single-file mode.",
     )
     parser.add_argument(
         "--batch-out",
-        help="Where to store the created batch info JSON (default: <file>.batch.json)",
+        help="Where to store the created batch info JSON (default: <file>.batch.json). Only used in single-file mode.",
     )
     parser.add_argument(
         "--skip-validate",
         action="store_true",
         help="Skip local JSONL validation before upload",
+    )
+    parser.add_argument(
+        "--glob",
+        default="*.jsonl",
+        help="Glob to select chunk files inside --chunks-dir (default: *.jsonl)",
     )
     return parser.parse_args()
 
@@ -75,30 +84,25 @@ def validate_jsonl(path: Path) -> None:
                 raise SystemExit(f"Line {idx} has non-object request")
 
 
-def main() -> None:
-    args = parse_args()
-    jsonl_path = Path(args.file)
+def upload_and_create(
+    client: genai.Client,
+    jsonl_path: Path,
+    model: str,
+    display_name: str,
+    file_name_out: Optional[Path],
+    batch_out: Optional[Path],
+    skip_validate: bool,
+) -> None:
     if not jsonl_path.exists():
         raise SystemExit(f"Input file not found: {jsonl_path}")
 
-    if not args.skip_validate:
+    if not skip_validate:
         print(f"Validating {jsonl_path} ...")
         validate_jsonl(jsonl_path)
         print("Validation passed.")
 
-    file_name_out = (
-        Path(args.file_name_out)
-        if args.file_name_out
-        else jsonl_path.with_suffix(jsonl_path.suffix + ".uploaded_name.txt")
-    )
-    batch_out = (
-        Path(args.batch_out)
-        if args.batch_out
-        else jsonl_path.with_suffix(jsonl_path.suffix + ".batch.json")
-    )
-    display_name = args.display_name or jsonl_path.stem
-
-    client = genai.Client()
+    file_name_out = file_name_out or jsonl_path.with_suffix(jsonl_path.suffix + ".uploaded_name.txt")
+    batch_out = batch_out or jsonl_path.with_suffix(jsonl_path.suffix + ".batch.json")
 
     print(f"Uploading {jsonl_path} ...")
     uploaded = client.files.upload(
@@ -110,7 +114,7 @@ def main() -> None:
 
     print("Creating batch job ...")
     batch = client.batches.create(
-        model=args.model,
+        model=model,
         src=uploaded.name,
         config={"display_name": display_name},
     )
@@ -118,6 +122,50 @@ def main() -> None:
     print(
         f"Batch created. name: {batch.name}\nState: {batch.state.name}\nSaved batch info to: {batch_out}"
     )
+
+
+def iter_chunk_files(chunks_dir: Path, glob_pattern: str) -> Iterable[Path]:
+    return sorted(chunks_dir.glob(glob_pattern))
+
+
+def main() -> None:
+    args = parse_args()
+    client = genai.Client()
+
+    if args.chunks_dir:
+        if not args.chunks_dir.exists():
+            raise SystemExit(f"Chunks directory not found: {args.chunks_dir}")
+
+        chunk_files = list(iter_chunk_files(args.chunks_dir, args.glob))
+        if not chunk_files:
+            raise SystemExit(f"No chunk files matching {args.glob} in {args.chunks_dir}")
+
+        print(f"Found {len(chunk_files)} chunk(s) in {args.chunks_dir}")
+        for idx, jsonl_path in enumerate(chunk_files, start=1):
+            base_display = args.display_name or jsonl_path.stem
+            display_name = f"{base_display}-chunk-{idx:04d}" if len(chunk_files) > 1 else base_display
+            print("\n---")
+            upload_and_create(
+                client=client,
+                jsonl_path=jsonl_path,
+                model=args.model,
+                display_name=display_name,
+                file_name_out=None,
+                batch_out=None,
+                skip_validate=args.skip_validate,
+            )
+    else:
+        jsonl_path = Path(args.file)
+        display_name = args.display_name or jsonl_path.stem
+        upload_and_create(
+            client=client,
+            jsonl_path=jsonl_path,
+            model=args.model,
+            display_name=display_name,
+            file_name_out=Path(args.file_name_out) if args.file_name_out else None,
+            batch_out=Path(args.batch_out) if args.batch_out else None,
+            skip_validate=args.skip_validate,
+        )
 
 
 if __name__ == "__main__":
