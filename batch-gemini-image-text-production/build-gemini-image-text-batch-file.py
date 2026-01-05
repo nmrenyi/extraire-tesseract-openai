@@ -121,6 +121,17 @@ def parse_args() -> argparse.Namespace:
         help="Print progress every N processed rows (default: 25)",
     )
     parser.add_argument(
+        "--chunk-size",
+        type=int,
+        default=1000,
+        help="How many requests per output file (default: 1000)",
+    )
+    parser.add_argument(
+        "--chunk-dir",
+        type=Path,
+        help="Optional subfolder for chunked outputs (default: <output-stem>-chunks next to output)",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         help=(
@@ -150,7 +161,15 @@ def main() -> None:
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    requests = []
+    chunk_dir = args.chunk_dir or (out_path.parent / f"{out_path.stem}-chunks")
+    chunk_dir.mkdir(parents=True, exist_ok=True)
+
+    chunk_size = max(1, args.chunk_size)
+    buffer = []
+    chunk_index = 1
+    written_total = 0
+    chunks_written = 0
+
     missing_images = []
     missing_text = 0
     processed = 0
@@ -201,7 +220,17 @@ def main() -> None:
                 ]
             }
 
-            requests.append({"key": custom_id, "request": request})
+            buffer.append({"key": custom_id, "request": request})
+            if len(buffer) >= chunk_size:
+                chunk_path = chunk_dir / f"{out_path.stem}-part-{chunk_index:04d}.jsonl"
+                with chunk_path.open("w", encoding="utf-8") as f_out:
+                    for req in buffer:
+                        f_out.write(json.dumps(req, ensure_ascii=False))
+                        f_out.write("\n")
+                written_total += len(buffer)
+                chunks_written += 1
+                chunk_index += 1
+                buffer.clear()
 
             if total_rows and (processed % progress_every == 0 or processed == total_rows):
                 print_progress(processed, total_rows, start_time)
@@ -209,12 +238,17 @@ def main() -> None:
     if total_rows:
         print()
 
-    with out_path.open("w", encoding="utf-8") as f:
-        for req in requests:
-            f.write(json.dumps(req, ensure_ascii=False))
-            f.write("\n")
+    if buffer:
+        chunk_path = chunk_dir / f"{out_path.stem}-part-{chunk_index:04d}.jsonl"
+        with chunk_path.open("w", encoding="utf-8") as f_out:
+            for req in buffer:
+                f_out.write(json.dumps(req, ensure_ascii=False))
+                f_out.write("\n")
+        written_total += len(buffer)
+        chunks_written += 1
+        buffer.clear()
 
-    print(f"Wrote {len(requests)} requests to {out_path}")
+    print(f"Wrote {written_total} requests across {chunks_written} file(s) in {chunk_dir}")
     if missing_images:
         print(f"Missing images for {len(missing_images)} entries (not written):")
         for cid in missing_images[:20]:
