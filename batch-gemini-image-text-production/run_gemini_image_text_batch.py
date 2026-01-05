@@ -4,10 +4,10 @@
 Quick usage
 -----------
 - Single file:
-        python run_gemini_image_text_batch.py --file path/to/requests.jsonl --model gemini-3-flash-preview
+        python run_gemini_image_text_batch.py --file path/to/requests.jsonl --model gemini-3-pro-preview
 
 - Chunked directory:
-        python run_gemini_image_text_batch.py --chunks-dir path/to/chunks --model gemini-3-flash-preview
+        python run_gemini_image_text_batch.py --chunks-dir image-text-requests-gemini-3-pro-preview-chunks --model gemini-3-pro-preview
 
 Notes
 - Expects GOOGLE_API_KEY in the environment.
@@ -34,8 +34,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--model",
-        default="gemini-3-flash-preview",
-        help="Gemini model name (default: gemini-3-flash-preview)",
+        default="gemini-3-pro-preview",
+        help="Gemini model name (default: gemini-3-pro-preview)",
     )
     parser.add_argument(
         "--display-name",
