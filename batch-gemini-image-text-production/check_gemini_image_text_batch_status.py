@@ -7,7 +7,7 @@ Run tips (from this directory):
 - Single batch by explicit name:
     python check_gemini_image_text_batch_status.py --batch-name batches/123 --wait
 - All chunked batches (batch json sidecars in a dir):
-    python check_gemini_image_text_batch_status.py --batch-jsons-dir image-text-requests-gemini-3-flash-preview-chunks --wait
+    python check_gemini_image_text_batch_status.py --batch-jsons-dir image-text-requests-gemini-3-pro-preview-chunks --wait
 """
 
 import argparse
