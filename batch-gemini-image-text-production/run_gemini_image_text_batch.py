@@ -56,6 +56,11 @@ def parse_args() -> argparse.Namespace:
         help="Skip local JSONL validation before upload",
     )
     parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Reuse existing sidecars: reuse uploaded file name if present and skip chunks that already have a batch json",
+    )
+    parser.add_argument(
         "--glob",
         default="*.jsonl",
         help="Glob to select chunk files inside --chunks-dir (default: *.jsonl)",
@@ -92,30 +97,47 @@ def upload_and_create(
     file_name_out: Optional[Path],
     batch_out: Optional[Path],
     skip_validate: bool,
+    resume: bool,
 ) -> None:
     if not jsonl_path.exists():
         raise SystemExit(f"Input file not found: {jsonl_path}")
 
-    if not skip_validate:
-        print(f"Validating {jsonl_path} ...")
-        validate_jsonl(jsonl_path)
-        print("Validation passed.")
-
     file_name_out = file_name_out or jsonl_path.with_suffix(jsonl_path.suffix + ".uploaded_name.txt")
     batch_out = batch_out or jsonl_path.with_suffix(jsonl_path.suffix + ".batch.json")
 
-    print(f"Uploading {jsonl_path} ...")
-    uploaded = client.files.upload(
-        file=str(jsonl_path),
-        config=types.UploadFileConfig(display_name=display_name, mime_type="application/jsonl"),
-    )
-    file_name_out.write_text(uploaded.name)
-    print(f"Uploaded. file name: {uploaded.name}\nSaved to: {file_name_out}")
+    if resume and batch_out.exists():
+        print(f"Resume: batch sidecar exists, skipping create for {jsonl_path} ({batch_out})")
+        return
+
+    uploaded_name: Optional[str] = None
+    if resume and file_name_out.exists():
+        uploaded_name = file_name_out.read_text().strip()
+        if uploaded_name:
+            print(f"Resume: reusing uploaded file name from {file_name_out}: {uploaded_name}")
+        else:
+            print(f"Resume: {file_name_out} is empty; will re-upload")
+
+    if not uploaded_name:
+        if not skip_validate:
+            print(f"Validating {jsonl_path} ...")
+            validate_jsonl(jsonl_path)
+            print("Validation passed.")
+
+        print(f"Uploading {jsonl_path} ...")
+        uploaded = client.files.upload(
+            file=str(jsonl_path),
+            config=types.UploadFileConfig(display_name=display_name, mime_type="application/jsonl"),
+        )
+        uploaded_name = uploaded.name
+        file_name_out.write_text(uploaded_name)
+        print(f"Uploaded. file name: {uploaded_name}\nSaved to: {file_name_out}")
+    else:
+        print(f"Using existing uploaded file: {uploaded_name}")
 
     print("Creating batch job ...")
     batch = client.batches.create(
         model=model,
-        src=uploaded.name,
+        src=uploaded_name,
         config={"display_name": display_name},
     )
     batch_out.write_text(batch.model_dump_json(indent=2))
@@ -153,6 +175,7 @@ def main() -> None:
                 file_name_out=None,
                 batch_out=None,
                 skip_validate=args.skip_validate,
+                resume=args.resume,
             )
     else:
         jsonl_path = Path(args.file)
@@ -165,6 +188,7 @@ def main() -> None:
             file_name_out=Path(args.file_name_out) if args.file_name_out else None,
             batch_out=Path(args.batch_out) if args.batch_out else None,
             skip_validate=args.skip_validate,
+            resume=args.resume,
         )
 
 
