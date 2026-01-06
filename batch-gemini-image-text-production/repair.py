@@ -62,7 +62,7 @@ def read_tsv(tsv_path: Path) -> Tuple[List[str], List[Dict[str, str]], List[Tupl
 		return [], [], []
 
 	missing_header = not _looks_like_header(candidate_headers)
-	if missing_header and len(candidate_headers) == len(DEFAULT_HEADERS):
+	if missing_header:
 		headers = DEFAULT_HEADERS
 		data_lines = lines
 		start_offset = 1
