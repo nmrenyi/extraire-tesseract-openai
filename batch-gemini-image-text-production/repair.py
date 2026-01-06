@@ -40,6 +40,14 @@ def parse_args() -> argparse.Namespace:
 	return parser.parse_args()
 
 
+DEFAULT_HEADERS = ["nom", "année", "notes", "adresse", "horaires"]
+
+
+def _looks_like_header(headers: List[str]) -> bool:
+	normalized = [h.strip().lower() for h in headers]
+	return any(h in {"nom", "année", "notes", "adresse", "horaires"} for h in normalized)
+
+
 def read_tsv(tsv_path: Path) -> Tuple[List[str], List[Dict[str, str]], List[Tuple[int, int, str, bool]]]:
 	text = tsv_path.read_text(encoding="utf-8-sig")
 	lines = text.splitlines()
@@ -49,15 +57,25 @@ def read_tsv(tsv_path: Path) -> Tuple[List[str], List[Dict[str, str]], List[Tupl
 
 	header_reader = csv.reader([lines[0]], delimiter="\t")
 	try:
-		headers = next(header_reader)
+		candidate_headers = next(header_reader)
 	except StopIteration:
 		return [], [], []
+
+	missing_header = not _looks_like_header(candidate_headers)
+	if missing_header and len(candidate_headers) == len(DEFAULT_HEADERS):
+		headers = DEFAULT_HEADERS
+		data_lines = lines
+		start_offset = 1
+	else:
+		headers = candidate_headers
+		data_lines = lines[1:]
+		start_offset = 2
 
 	rows: List[Dict[str, str]] = []
 	issues: List[Tuple[int, int, str, bool]] = []
 	expected_tabs = max(len(headers) - 1, 0)
 
-	for offset, raw_line in enumerate(lines[1:], start=2):
+	for offset, raw_line in enumerate(data_lines, start=start_offset):
 		if not raw_line.strip():
 			continue
 
