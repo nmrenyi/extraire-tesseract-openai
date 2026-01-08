@@ -19,8 +19,8 @@ ROOT = Path(__file__).resolve().parents[1]
 INSTR_RAW = ROOT / "instructions-raw.txt"
 INSTR_EXAMPLE = ROOT / "instructions-example-output.tsv"
 TSV_PATHS = {
-    "original": ROOT / "batch" / "rosenwald-benchmark-original.tsv",
-    "tesseract": ROOT / "batch" / "rosenwald-benchmark-tesseract.tsv",
+    "original": ROOT / "batch-openai" / "rosenwald-benchmark-original.tsv",
+    "tesseract": ROOT / "batch-openai" / "rosenwald-benchmark-tesseract.tsv",
 }
 
 def load_instructions() -> str:
@@ -66,7 +66,7 @@ def main() -> None:
 
     instructions = load_instructions()
 
-    output_path = ROOT / "batch" / f"{args.source}-requests-{args.model}.jsonl"
+    output_path = ROOT / "batch-openai" / f"{args.source}-requests-{args.model}.jsonl"
 
     requests = []
 
