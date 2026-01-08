@@ -641,6 +641,13 @@ tqdm>=4.65.0               # Progress bars
 See requirements.txt for complete dependency list.
 
 
+## More Information
+
+For more detailed information, see the full report:
+
+- Google Drive folder: https://drive.google.com/drive/folders/1p7XqrWZg4O1lyLGvgXd4mwM9ZVFZBUEy
+
+
 ## Contact
 
 For questions, feedback, or collaboration:
