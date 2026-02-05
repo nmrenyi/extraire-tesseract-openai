@@ -37,7 +37,7 @@ def determine_sexe(nom: str) -> str:
     
     # Check patterns in priority order (longer patterns first to avoid partial matches)
     # patterns = ['Mademoiselle', 'Madame', 'Mlle', 'Mme', 'Mad.', 'Dame', 'née']
-    patterns = ['Mlle', 'Mme', 'Mademoiselle', '(Madame', '(Mad.', '(Dame']
+    patterns = ['Mlle', 'Mme', 'Mademoiselle', '(Madame', '(Mad.', '(Dame', ' née']
     
     for pattern in patterns:
         if pattern in nom:
