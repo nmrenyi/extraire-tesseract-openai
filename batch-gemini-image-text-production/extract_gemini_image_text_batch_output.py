@@ -3,7 +3,7 @@
 
 Run tips (from this directory):
 - Single output file (model-based default):
-        python extract_gemini_image_text_batch_output.py --model gemini-3-flash-preview
+        python extract_gemini_image_text_batch_output.py --model gemini-3-pro-preview
 - Explicit output file:
         python extract_gemini_image_text_batch_output.py --output-jsonl path/to/file.output.jsonl
 - All chunk outputs in a directory:
@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Optional
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_MODEL = "gemini-3-flash-preview"
+DEFAULT_MODEL = "gemini-3-pro-preview"
 
 
 def parse_args() -> argparse.Namespace:
