@@ -117,6 +117,11 @@ def parse_args() -> argparse.Namespace:
         default="*.batch.json",
         help="Glob to match batch json files inside --batch-jsons-dir (default: *.batch.json)",
     )
+    parser.add_argument(
+        "--output-dir",
+        default="raw-batch-output",
+        help="Directory for output and error files (default: raw-batch-output)",
+    )
     return parser.parse_args()
 
 
@@ -199,7 +204,7 @@ def main() -> None:
         output_file = getattr(batch, "output_file", None) or dest_file
 
         if output_file:
-            default_output = Path(__file__).resolve().parent / "raw-batch-output" / f"{base_name}.output.jsonl"
+            default_output = Path(__file__).resolve().parent / args.output_dir / f"{base_name}.output.jsonl"
             output_path = save_bytes(
                 client,
                 output_file,
@@ -219,7 +224,7 @@ def main() -> None:
                 print("\nNo error file (no failures or not provided by API).")
             continue
 
-        default_errors = Path(__file__).resolve().parent / "raw-batch-output" / f"{base_name}.errors.jsonl"
+        default_errors = Path(__file__).resolve().parent / args.output_dir / f"{base_name}.errors.jsonl"
         error_path = save_bytes(
             client,
             error_file,
