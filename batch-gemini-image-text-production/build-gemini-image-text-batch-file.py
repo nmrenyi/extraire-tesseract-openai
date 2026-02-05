@@ -24,6 +24,8 @@ INSTR_RAW = ROOT / "instructions-image-input.txt"
 INSTR_EXAMPLE = ROOT / "instructions-example-output.tsv"
 TSV_PATHS = {
     "original": ROOT / "batch-gemini-image-text-production" / "rosenwald-benchmark-original.tsv",
+    "1917": ROOT / "batch-gemini-image-text-production" / "rosenwald-benchmark-original-1907.tsv",
+
 }
 DEFAULT_IMAGES_ROOT = ROOT / "rosenwald-images"
 DEFAULT_MODEL = "gemini-3-pro-preview"
