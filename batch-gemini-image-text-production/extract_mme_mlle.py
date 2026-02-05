@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
-"""Extract Mme and Mlle from TSV files and add sexe column.
+"""Extract female honorifics from TSV files and add sexe column.
 
-This script:
+This script recognizes the following patterns:
+Madame, Mme, Mad., Mademoiselle, Mlle, Dame, née
+
+The script:
 1. Reads all TSV files from an input directory
-2. Identifies rows containing 'Mme' or 'Mlle' in the 'nom' field
-3. Adds a 'sexe' column with the appropriate value
+2. Identifies rows containing female honorifics in the 'nom' field
+3. Adds a 'sexe' column with the exact pattern found
 4. Cleans up the 'année' column (converts float to int where possible)
 5. Saves the processed TSVs to an output directory
-6. Optionally creates a combined file with all Mme/Mlle entries
+6. Creates a combined file with all entries containing these patterns (all_mme_mlle.tsv)
+7. Creates a statistics file with counts per file (mme_mlle_counts.tsv)
 """
 
 import argparse
@@ -18,22 +22,28 @@ from typing import Optional
 
 
 def determine_sexe(nom: str) -> str:
-    """Determine sexe based on presence of Mme or Mlle in nom field.
+    """Determine sexe based on presence of female honorifics in nom field.
+    
+    Returns the actual pattern found: Madame, Mme, Mad., Mademoiselle, Mlle, née, Dame
     
     Args:
         nom: Name string to check
         
     Returns:
-        'Mme', 'Mlle', or empty string
+        The matched pattern or empty string
     """
     if pd.isna(nom):
         return ''
-    elif 'Mme' in nom:
-        return 'Mme'
-    elif 'Mlle' in nom:
-        return 'Mlle'
-    else:
-        return ''
+    
+    # Check patterns in priority order (longer patterns first to avoid partial matches)
+    # patterns = ['Mademoiselle', 'Madame', 'Mlle', 'Mme', 'Mad.', 'Dame', 'née']
+    patterns = ['Mlle', 'Mme', 'Mademoiselle', '(Madame']
+    
+    for pattern in patterns:
+        if pattern in nom:
+            return pattern
+    
+    return ''
 
 
 def convert_annee(annee) -> str:
@@ -125,13 +135,13 @@ def process_tsv_files(
             df.to_csv(output_path / filename, sep='\t', index=False)
             
             # Collect Mme/Mlle rows for combined output
-            if create_combined and (mme_count > 0 or mlle_count > 0):
+            if create_combined and df['sexe'].ne('').any():
                 # Extract year and page from filename (e.g., "1903-0129.tsv")
                 year, page = filename.replace('.tsv', '').split('-')
-                mme_mlle_rows = df[df['sexe'].isin(['Mme', 'Mlle'])].copy()
-                mme_mlle_rows['year'] = year
-                mme_mlle_rows['page'] = page
-                all_mme_mlle_rows.append(mme_mlle_rows)
+                female_rows = df[df['sexe'] != ''].copy()
+                female_rows['year'] = year
+                female_rows['page'] = page
+                all_mme_mlle_rows.append(female_rows)
             
             if (idx % 100 == 0) or (mme_count > 0 or mlle_count > 0):
                 print(f"[{idx}/{len(filenames)}] {filename}: Mme={mme_count}, Mlle={mlle_count}")
@@ -164,7 +174,9 @@ def process_tsv_files(
 
 
 def count_mme_mlle(input_folder: str) -> pd.DataFrame:
-    """Count Mme and Mlle occurrences in all TSV files.
+    """Count female honorific occurrences in all TSV files.
+    
+    Counts based on patterns: Madame, Mme, Mad., Mademoiselle, Mlle, Dame, née
     
     Args:
         input_folder: Directory containing TSV files
@@ -179,12 +191,31 @@ def count_mme_mlle(input_folder: str) -> pd.DataFrame:
     
     filenames = sorted([f for f in os.listdir(input_path) if f.endswith('.tsv')])
     
+    patterns = ['Mademoiselle', 'Madame', 'Mlle', 'Mme', 'Mad.', 'Dame', 'née']
+    
     results = []
     for filename in filenames:
         try:
             df = pd.read_csv(input_path / filename, sep='\t')
-            count_mme = df['nom'].str.contains('Mme', na=False).sum()
-            count_mlle = df['nom'].str.contains('Mlle', na=False).sum()
+            # Count based on all patterns
+            def has_pattern(nom):
+                if pd.isna(nom):
+                    return False
+                return any(pattern in nom for pattern in patterns)
+            
+            # For backward compatibility, still count Mme-related and Mlle-related separately
+            def has_mme_related(nom):
+                if pd.isna(nom):
+                    return False
+                return any(pattern in nom for pattern in ['Madame', 'Mme', 'Mad.', 'Dame', 'née'])
+            
+            def has_mlle_related(nom):
+                if pd.isna(nom):
+                    return False
+                return any(pattern in nom for pattern in ['Mademoiselle', 'Mlle'])
+            
+            count_mme = df['nom'].apply(has_mme_related).sum()
+            count_mlle = df['nom'].apply(has_mlle_related).sum()
             results.append({
                 'filename': filename.replace('.tsv', ''),
                 'count_mme': count_mme,
